@@ -1,0 +1,17 @@
+[project]
+name = "blurpit-calc"
+version = "3.0.0"
+authors = [
+    { name="blurpit" }
+]
+description = "Calculator library that evaluates expressions, outputs & renders LaTeX, and graphs functions."
+requires-python = ">=3.9"
+readme = "README.md"
+dependencies = ["scipy", "colorama", "treelib"]
+
+[project.optional-dependencies]
+latex = ["latex", "pdf2image"]
+graph = ["matplotlib"]
+
+[project.urls]
+"Homepage" = "https://github.com/blurpit/calc3"
