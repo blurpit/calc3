@@ -1,21 +1,52 @@
 import math
 import operator
 import re
+import textwrap
 import time
 from contextlib import contextmanager
 from random import random
+from typing import Union
 
+import numpy as np
 import scipy
 
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+except ImportError:
+    mpl = None
+    plt = None
+
 from .context import Context
-from .definitions import Associativity, DefinitionType, FunctionDefinition, VariableDefinition, \
+from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix
 from .parser import parse, Identifier, Declaration, BinaryOperator, UnaryOperator, Function
 
-__all__ = ['evaluate', 'tree', 'console', 'create_global_context']
+__all__ = ['evaluate', 'tree', 'console', 'graph', 'create_global_context']
 
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
+_undefined = type('undefined', (), {
+    '__str__': lambda _: 'undefined',
+    '__repr__': lambda _: 'undefined'
+})()
+
+
+# Setup pyplot style
+if mpl and plt:
+    mpl.rcParams.update(mpl.rcParamsDefault)
+    plt.rc('font', family='serif')
+    plt.rc('text', color='white')
+    plt.rc('mathtext', fontset='dejavuserif')
+    plt.rc('axes', facecolor='none', edgecolor='none',
+           labelsize=28, titlesize=32, labelcolor='white',
+           axisbelow=True, grid=True)
+    plt.rc('grid', color='#202225', linestyle='solid', lw=3)
+    plt.rc('xtick', direction='out', labelsize=18, color='#dcddde')
+    plt.rc('ytick', direction='out', labelsize=18, color='#dcddde')
+    plt.rc('lines', linewidth=5)
+    plt.rc('figure', facecolor='#37393f', figsize=[12, 10], dpi=72)
+
 
 def evaluate(ctx:Context, expression:str):
     """ Evaluate an expression """
@@ -72,9 +103,12 @@ def console(ctx:Context, show_time=False):
 
                     if isinstance(result, DeclaredFunction):
                         ctx.add(result)
-
-                    if type(result) == list:
+                    elif type(result) == list:
                         result = ', '.join(map(str, result))
+                    elif mpl and plt and isinstance(result, plt.Figure):
+                        result.show()
+                        continue
+
                     cprint(str(result), Style.BRIGHT)
 
                     if show_time:
@@ -82,6 +116,28 @@ def console(ctx:Context, show_time=False):
                 except Exception as e:
                     errprint(e)
             print()
+
+def graph(ctx:Context, func:Union[Definition, str], xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
+    """
+    Graph a function
+
+    `func` should be a Definition object that represents a 1-dimensional function,
+    (takes 1 real input and outputs 1 real output). It can also be a string that
+    evaluates to a 1-dimensional function.
+
+    :param ctx: Context
+    :param func: Function to graph
+    :param xlow: X axis minimum (default -10)
+    :param xhigh: X axis maximum (default 10)
+    :param ylow: Y axis minimum (default auto)
+    :param yhigh: Y axis maximum (default auto)
+    :param n: Number of points to calculate
+    :return: A matplotlib Figure
+    """
+    if isinstance(func, str):
+        func = evaluate(ctx, func)
+    return graph_(func, xlow, xhigh, ylow, yhigh, n)
+
 
 @contextmanager
 def _capture_stdout():
@@ -181,6 +237,57 @@ def tree_(ctx, obj):
     output.seek(0)
     return output.read().strip()
 
+def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefined, n=_undefined):
+    if not isinstance(f, Definition):
+        raise TypeError("'{}' is not a function".format(f))
+
+    if len(f.args) != 1:
+        raise TypeError("{} is not 1-dimensional. Function must take 1 input "
+                        "and return 1 output".format(f.signature))
+
+    if xlow is _undefined:
+        xlow = -10
+    if xhigh is _undefined:
+        xhigh = 10
+    if ylow is _undefined:
+        ylow = None
+    if yhigh is _undefined:
+        yhigh = None
+    if n is _undefined:
+        n = 1000
+
+    x = np.linspace(xlow, xhigh, n)
+    y = np.empty(len(x))
+
+    # Test the first input for being a float or int
+    y[0] = f(x[0])
+    if not isinstance(y[0], (float, int)):
+        raise TypeError("{} is not 1-dimensional. Function must take 1 input "
+                        "and return 1 output".format(f.signature))
+
+    # Fill out the rest of the outputs
+    for i in range(1, len(x)):
+        result = f(x[i])
+        y[i] = float(result)
+
+    fig, ax = plt.subplots(1, 1)
+
+    ax.axhline(0, color='#202225', lw=6)
+    ax.axvline(0, color='#202225', lw=6)
+
+    ax.set_xlim(xlow, xhigh)
+    if ylow is not None and yhigh is not None:
+        ax.set_ylim(ylow, yhigh)
+    ax.set_xlabel(str(f.args[0]))
+    ax.set_ylabel(str(f.signature))
+    # if tex_title:
+    #     ax.set_title('${}$'.format(func.latex()))
+    # else:
+    ax.set_title(textwrap.fill(str(f), 48))
+
+    ax.plot(x, y, color='#ed4245')
+    return fig
+
 def and_(ctx, a, b):
     return a.evaluate(ctx) and b.evaluate(ctx)
 
@@ -275,14 +382,15 @@ def create_global_context():
     ctx = Context()
     ctx.add(
         # Constants
-        VariableDefinition('π',   math.pi,       help_text="Ratio of a circle's circumference to its diameter"),
-        VariableDefinition('pi',  math.pi, 'π',  help_text="Ratio of a circle's circumference to its diameter"),
-        VariableDefinition('e',   math.e,        help_text="Euler's number"),
-        VariableDefinition('ϕ',   _golden,       help_text="The golden ratio"),
-        VariableDefinition('phi', _golden, 'ϕ',  help_text="The golden ratio"),
-        VariableDefinition('∞',   math.inf,      help_text="Infinity"),
-        VariableDefinition('inf', math.inf, '∞', help_text="Infinity"),
-        VariableDefinition('j',   1j,            help_text="Imaginary unit, sqrt(-1)"),
+        VariableDefinition('π',    math.pi,       help_text="Ratio of a circle's circumference to its diameter"),
+        VariableDefinition('pi',   math.pi, 'π',  help_text="Ratio of a circle's circumference to its diameter"),
+        VariableDefinition('e',    math.e,        help_text="Euler's number"),
+        VariableDefinition('ϕ',    _golden,       help_text="The golden ratio"),
+        VariableDefinition('phi',  _golden, 'ϕ',  help_text="The golden ratio"),
+        VariableDefinition('∞',    math.inf,      help_text="Infinity"),
+        VariableDefinition('inf',  math.inf, '∞', help_text="Infinity"),
+        VariableDefinition('j',    1j,            help_text="Imaginary unit, sqrt(-1)"),
+        VariableDefinition('_',    _undefined,    help_text="Undefined value (should only be used to leave certain function arguments blank)"),
 
         # Binary Operators
         BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R, help_text="Concatenation operator"),
@@ -309,9 +417,10 @@ def create_global_context():
         FunctionDefinition('ans',   '',  lambda: ctx.ans, help_text="Answer to the previously evaluated expression"),
 
         # Informational Functions
-        FunctionDefinition('type',  ['obj'],  type_, help_text="Gets the type of `obj`"),
-        FunctionDefinition('help',  ['obj'],  help_, help_text="Provide a description for the given object", manual_eval=True),
-        FunctionDefinition('tree',  ['expr'], tree_, help_text="Display the syntax tree structure", manual_eval=True),
+        FunctionDefinition('type',  ['obj'],          type_,  help_text="Gets the type of `obj`"),
+        FunctionDefinition('help',  ['obj'],          help_,  help_text="Provide a description for the given object", manual_eval=True),
+        FunctionDefinition('tree',  ['expr'],         tree_,  help_text="Display the syntax tree structure", manual_eval=True),
+        FunctionDefinition('graph', ['f()', '*args'], graph_, help_text="Graph a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
 
         # Logic & Data structure functions
         FunctionDefinition('sum',    ['*x'], sum_,                       help_text="Sum of `x`"),

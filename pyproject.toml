@@ -7,7 +7,7 @@ authors = [
 description = "Calculator library that evaluates expressions, outputs & renders LaTeX, and graphs functions."
 requires-python = ">=3.9"
 readme = "README.md"
-dependencies = ["scipy", "colorama", "treelib"]
+dependencies = ["numpy", "scipy", "colorama", "treelib"]
 
 [project.optional-dependencies]
 latex = ["latex", "pdf2image"]
