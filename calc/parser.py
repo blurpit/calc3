@@ -275,12 +275,7 @@ class BinaryOperator(Node):
         right = self.children[1]
 
         is_implicit = ImplicitMultiplication.is_implicit(self, left, right)
-
-        parens_right = isinstance(right, (BinaryOperator, ListNode)) \
-                       and Node.higher_precedence(self, right)
-
-        parens_left = isinstance(left, (BinaryOperator, ListNode)) \
-                      and not Node.higher_precedence(left, self)
+        parens_left, parens_right = self._is_parens(left, right)
 
         left = str(left)
         right = str(right)
@@ -302,6 +297,16 @@ class BinaryOperator(Node):
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
+
+    def _is_parens(self, left, right):
+        """ Whether the left & right should be parenthesized """
+        # If the child node has higher precedence, it means the child was parenthesized,
+        # assuming the child is an operator and not a function/number.
+        parens_right = isinstance(right, (BinaryOperator, UnaryOperator, ListNode)) \
+                       and Node.higher_precedence(self, right)
+        parens_left = isinstance(left, (BinaryOperator, UnaryOperator, ListNode)) \
+                      and not Node.higher_precedence(left, self)
+        return parens_left, parens_right
 
 class UnaryOperator(Node):
     def __init__(self, op:UnaryOperatorDefinition):
@@ -327,17 +332,18 @@ class UnaryOperator(Node):
         return op.func(*self._eval_children(ctx, op))
 
     def __str__(self):
-        result = '{}{}'.format(self.symbol, str(self.children[0]))
+        right = self.children[0]
 
-        # If the parent has higher precedence, it means this operator was parenthesized,
-        # unless the parent is a function, in which case the parentheses will be added
-        # already.
         # Same logic as BinaryOperator.__str__
-        if self.parent and not isinstance(self.parent, (Function, Declaration)):
-            if self.parent.precedence > self.precedence:
-                result = '(' + result + ')'
+        parens_right = isinstance(right, (BinaryOperator, UnaryOperator, ListNode)) \
+                       and Node.higher_precedence(self, right)
 
-        return result
+        right = str(right)
+
+        if parens_right:
+            right = '(' + right + ')'
+
+        return self.symbol + right
 
     def __repr__(self):
         operand = repr(self.children[0]) if len(self.children) > 0 else '?'
