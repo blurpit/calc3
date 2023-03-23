@@ -19,10 +19,10 @@ except ImportError:
 
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
-    BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix
-from .parser import parse, Identifier, Declaration, BinaryOperator, UnaryOperator, Function
+    BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
+from .parser import parse, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Node, Variable
 
-__all__ = ['evaluate', 'tree', 'console', 'graph', 'create_global_context']
+__all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_global_context']
 
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
@@ -125,18 +125,21 @@ def graph(ctx:Context, func:Union[Definition, str], xlow=-10, xhigh=10, ylow=Non
     (takes 1 real input and outputs 1 real output). It can also be a string that
     evaluates to a 1-dimensional function.
 
-    :param ctx: Context
-    :param func: Function to graph
-    :param xlow: X axis minimum (default -10)
-    :param xhigh: X axis maximum (default 10)
-    :param ylow: Y axis minimum (default auto)
-    :param yhigh: Y axis maximum (default auto)
-    :param n: Number of points to calculate
-    :return: A matplotlib Figure
+    `xlow`, `xhigh`, `ylow`, and `yhigh` determine the range shown on each axis.
+    `n` is how many points to compute.
     """
     if isinstance(func, str):
         func = evaluate(ctx, func)
     return graph_(func, xlow, xhigh, ylow, yhigh, n)
+
+def latex(ctx:Context, expression:Union[Definition, str]):
+    """ Convert an expression into a LaTeX expression """
+    if isinstance(expression, str):
+        expression = re.sub(r'\s+', '', expression)
+        expression = parse(ctx, expression)
+    if isinstance(expression, DeclaredFunction):
+        expression = expression.func
+    return latex_(ctx, expression)
 
 
 @contextmanager
@@ -153,7 +156,6 @@ def _capture_stdout():
         sys.stdout = old_stdout
 
 def concat(a, b):
-    """ Concatenates two objects into a list """
     if type(a) != list: a = [a]
     if type(b) == list: a.extend(b)
     else: a.append(b)
@@ -211,25 +213,25 @@ def help_(ctx, obj):
 
     return 'help: {}\nNo description provided'.format(obj)
 
-def tree_(ctx, obj):
-    # not to be confused with tree()
+def tree_(ctx, root):
+    """ Tree function for use in a function definition. Use calc.tree() in regular code. """
     import treelib
 
     with _capture_stdout() as output:
         t = treelib.Tree()
 
-        if isinstance(obj, Function) and len(obj.children) == 0:
-            definition = ctx.get(obj.name)
+        if isinstance(root, Function) and len(root.children) == 0:
+            definition = ctx.get(root.name)
             if isinstance(definition, DeclaredFunction):
-                obj = definition.func
+                root = definition.func
                 msg = 'Declaration ' + str(definition)
         else:
-            msg = 'Expression ' + str(obj)
+            msg = 'Expression ' + str(root)
 
-        parent = obj.parent  # temporarily remove parent
-        obj.parent = None
-        obj.add_to_tree(t, 0)
-        obj.parent = parent
+        parent = root.parent  # temporarily remove parent
+        root.parent = None
+        root.add_to_tree(t, 0)
+        root.parent = parent
 
         print(msg)
         t.show()
@@ -238,6 +240,7 @@ def tree_(ctx, obj):
     return output.read().strip()
 
 def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefined, n=_undefined):
+    """ Graph function for use in a function definition. Use calc.graph() in regular code. """
     if not isinstance(f, Definition):
         raise TypeError("'{}' is not a function".format(f))
 
@@ -288,6 +291,10 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
     ax.plot(x, y, color='#ed4245')
     return fig
 
+def latex_(ctx, root):
+    return root.latex(ctx)
+
+
 def and_(ctx, a, b):
     return a.evaluate(ctx) and b.evaluate(ctx)
 
@@ -297,8 +304,20 @@ def or_(ctx, a, b):
 def type_(obj):
     return type(obj).__name__
 
+def root(x, n):
+    return x ** (1/n)
+
 def hypot(x, y):
     return math.sqrt(x*x + y*y)
+
+def sec(x):
+    return 1 / math.cos(x)
+
+def csc(x):
+    return 1 / math.sin(x)
+
+def cot(x):
+    return 1 / math.tan(x)
 
 def binomial(n, x, p):
     return math.comb(n, x) * pow(p, x) * pow(1-p, n-x)
@@ -378,49 +397,130 @@ def spherical_to_cylindrical(r, theta, phi):
     return vector(r*math.sin(phi), theta, r*math.cos(phi))
 
 
+def tex_div(self, ctx, left, right, *_):
+    left = left.latex(ctx)
+    right = right.latex(ctx)
+    return r'\frac{{{}}}{{{}}}'.format(left, right)
+
+def tex_pow(self, ctx, left, right, parens_left, *_):
+    left = left.latex(ctx)
+    right = right.latex(ctx)
+    if parens_left:
+        left = r'\left( ' + left + r' \right)'
+    return r'{}^{{{}}}'.format(left, right)
+
+def tex_abs(self, ctx, x):
+    x = x.latex(ctx)
+    return r'\left| ' + x + r' \right|'
+
+def tex_floor(self, ctx, x):
+    x = x.latex(ctx)
+    return r'\lfloor{' + x + r'}\rfloor'
+
+def tex_ceil(self, ctx, x):
+    x = x.latex(ctx)
+    return r'\lceil{' + x + r'}\rceil'
+
+def tex_root(self, ctx, x, n=None):
+    x = x.latex(ctx)
+    if n is None:
+        return r'\sqrt{' + x + r'}'
+    n = n.latex(ctx)
+    return r'\sqrt[{}]{{{}}}'.format(n, x)
+
+def tex_log(self, ctx, x, b=None):
+    if b is None: b = 10
+    else: b = b.latex(ctx)
+    return r'log_{{{}}}\left( {} \right)'.format(b, x)
+
+def tex_fact(self, ctx, n):
+    if Node.is_left_parenthesized(self, n):
+        return r'\left({{{}}}\right)!'.format(n.latex(ctx))
+    return r'{{{}}}!'.format(n.latex(ctx))
+
+def tex_choose(self, ctx, n, k):
+    return '{{{}}}\choose{{{}}}'.format(n.latex(ctx), k.latex(ctx))
+
+def tex_integral(self, ctx, f, a, b):
+    with ctx.with_scope():
+        if isinstance(f, Declaration):
+            definition = f.definition
+        elif isinstance(f, Function):
+            definition = ctx.get(f.name)
+        else:
+            raise TypeError('Integrand must be a function')
+
+        if len(definition.args) < 1:
+            raise TypeError('Integrand must take at least 1 argument')
+
+        differential = replace_latex_symbols(definition.args[0])
+        definition.add_args_to_context(ctx, None)
+
+        if isinstance(definition, DeclaredFunction):
+            body = definition.func.latex(ctx)
+        else:
+            inputs = (Variable(ctx.get(arg)) for arg in definition.args)
+            body = definition.fill_latex(ctx, *inputs)
+
+        return r'\int_{{{}}}^{{{}}} {{{}}} \,d{}'.format(a.latex(ctx), b.latex(ctx), body, differential)
+
+def tex_deriv(self, ctx):
+    pass
+
+def tex_dot(self, ctx):
+    pass
+
+def tex_mag(self, ctx):
+    pass
+
+def tex_mag2(self, ctx):
+    pass
+
+
 def create_global_context():
     ctx = Context()
     ctx.add(
         # Constants
         VariableDefinition('π',    math.pi,       help_text="Ratio of a circle's circumference to its diameter"),
-        VariableDefinition('pi',   math.pi, 'π',  help_text="Ratio of a circle's circumference to its diameter"),
+        VariableDefinition('pi',   math.pi,  'π', help_text="Ratio of a circle's circumference to its diameter"),
         VariableDefinition('e',    math.e,        help_text="Euler's number"),
         VariableDefinition('ϕ',    _golden,       help_text="The golden ratio"),
-        VariableDefinition('phi',  _golden, 'ϕ',  help_text="The golden ratio"),
+        VariableDefinition('phi',  _golden,  'ϕ', help_text="The golden ratio"),
         VariableDefinition('∞',    math.inf,      help_text="Infinity"),
         VariableDefinition('inf',  math.inf, '∞', help_text="Infinity"),
         VariableDefinition('j',    1j,            help_text="Imaginary unit, sqrt(-1)"),
         VariableDefinition('_',    _undefined,    help_text="Undefined value (should only be used to leave certain function arguments blank)"),
 
         # Binary Operators
-        BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R, help_text="Concatenation operator"),
-        BinaryOperatorDefinition('+', operator.add,     2, Associativity.L_TO_R, help_text="Addition operator"),
-        BinaryOperatorDefinition('-', operator.sub,     2, Associativity.L_TO_R, help_text="Subtraction operator"),
-        BinaryOperatorDefinition('*', operator.mul,     4, Associativity.L_TO_R, help_text="Multiplication operator"),
-        BinaryOperatorDefinition('/', operator.truediv, 4, Associativity.L_TO_R, help_text="Division operator"),
-        BinaryOperatorDefinition('%', operator.mod,     4, Associativity.L_TO_R, help_text="Remainder operator"),
-        BinaryOperatorDefinition('^', operator.pow,     6, Associativity.R_TO_L, help_text="Exponentiation operator"),
-        BinaryOperatorDefinition('&', and_,             4, Associativity.L_TO_R, help_text="Logical AND operator", manual_eval=True),
-        BinaryOperatorDefinition('|', or_,              2, Associativity.L_TO_R, help_text="Logical OR operator", manual_eval=True),
+        BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R,                help_text="Concatenation operator"),
+        BinaryOperatorDefinition('+', operator.add,     2, Associativity.L_TO_R,                help_text="Addition operator"),
+        BinaryOperatorDefinition('-', operator.sub,     2, Associativity.L_TO_R,                help_text="Subtraction operator"),
+        BinaryOperatorDefinition('*', operator.mul,     4, Associativity.L_TO_R,                help_text="Multiplication operator"),
+        BinaryOperatorDefinition('/', operator.truediv, 4, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
+        BinaryOperatorDefinition('%', operator.mod,     4, Associativity.L_TO_R,                help_text="Remainder operator"),
+        BinaryOperatorDefinition('^', operator.pow,     6, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
+        BinaryOperatorDefinition('&', and_,             4, Associativity.L_TO_R,                help_text="Logical AND operator", manual_eval=True),
+        BinaryOperatorDefinition('|', or_,              2, Associativity.L_TO_R,                help_text="Logical OR operator", manual_eval=True),
 
         # Unary operators
         UnaryOperatorDefinition('-', operator.neg, help_text="Unary negation operator"),
 
         # Basic Functions
-        FunctionDefinition('neg',   'x', operator.neg,    help_text="Negates `x`"),
-        FunctionDefinition('abs',   'x', abs,             help_text="Absolute value of `x`"),
-        FunctionDefinition('rad',   'θ', math.radians,    help_text="Converts `θ` in degrees to radians"),
-        FunctionDefinition('deg',   'θ', math.degrees,    help_text="Converts `θ` in radians to degrees"),
-        FunctionDefinition('round', 'x', round,           help_text="Rounds `x` to the nearest integer"),
-        FunctionDefinition('floor', 'x', math.floor,      help_text="Rounds `x` down to the next integer"),
-        FunctionDefinition('ceil',  'x', math.ceil,       help_text="Rounds `x` up to the next integer"),
-        FunctionDefinition('ans',   '',  lambda: ctx.ans, help_text="Answer to the previously evaluated expression"),
+        FunctionDefinition('neg',   'x', operator.neg,                     help_text="Negates `x`"),
+        FunctionDefinition('abs',   'x', abs,             latex=tex_abs,   help_text="Absolute value of `x`"),
+        FunctionDefinition('rad',   'θ', math.radians,                     help_text="Converts `θ` in degrees to radians"),
+        FunctionDefinition('deg',   'θ', math.degrees,                     help_text="Converts `θ` in radians to degrees"),
+        FunctionDefinition('round', 'x', round,                            help_text="Rounds `x` to the nearest integer"),
+        FunctionDefinition('floor', 'x', math.floor,      latex=tex_floor, help_text="Rounds `x` down to the next integer"),
+        FunctionDefinition('ceil',  'x', math.ceil,       latex=tex_ceil,  help_text="Rounds `x` up to the next integer"),
+        FunctionDefinition('ans',   '',  lambda: ctx.ans,                  help_text="Answer to the previously evaluated expression"),
 
         # Informational Functions
         FunctionDefinition('type',  ['obj'],          type_,  help_text="Gets the type of `obj`"),
         FunctionDefinition('help',  ['obj'],          help_,  help_text="Provide a description for the given object", manual_eval=True),
         FunctionDefinition('tree',  ['expr'],         tree_,  help_text="Display the syntax tree structure", manual_eval=True),
         FunctionDefinition('graph', ['f()', '*args'], graph_, help_text="Graph a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
+        FunctionDefinition('latex', ['expr'],         latex_, help_text="Convert an expression into LaTeX code", manual_eval=True),
 
         # Logic & Data structure functions
         FunctionDefinition('sum',    ['*x'], sum_,                       help_text="Sum of `x`"),
@@ -433,21 +533,21 @@ def create_global_context():
         FunctionDefinition('set',    ['*x'], set_,                       help_text="Removes duplicates from a list"),
 
         # Roots & Complex Functions
-        FunctionDefinition('sqrt',  'x',  math.sqrt,             help_text="Square root of `x`"),
-        FunctionDefinition('root',  'xn', lambda x, n: x**(1/n), help_text="`n`th root of `x`"),
-        FunctionDefinition('hypot', 'xy', lambda x, y: hypot,    help_text="Returns sqrt(x^2 + y^2)"),
+        FunctionDefinition('sqrt',  'x',  math.sqrt, latex=tex_root, help_text="Square root of `x`"),
+        FunctionDefinition('root',  'xn', root,      latex=tex_root, help_text="`n`th root of `x`"),
+        FunctionDefinition('hypot', 'xy', hypot,                     help_text="Returns sqrt(x^2 + y^2)"),
 
         # Trigonometric Functions
-        FunctionDefinition('sin',   'θ',  math.sin,                help_text="Sine of `θ` (radians)"),
-        FunctionDefinition('cos',   'θ',  math.cos,                help_text="Cosine of `θ` (radians)"),
-        FunctionDefinition('tan',   'θ',  math.tan,                help_text="Tangent of `θ` (radians)"),
-        FunctionDefinition('sec',   'θ',  lambda x: 1/math.cos(x), help_text="Secant of `θ` in radians"),
-        FunctionDefinition('csc',   'θ',  lambda x: 1/math.sin(x), help_text="Cosecant of `θ` in radians"),
-        FunctionDefinition('cot',   'θ',  lambda x: 1/math.tan(x), help_text="Cotangent of `θ` in radians"),
-        FunctionDefinition('asin',  'x',  math.asin,               help_text="Inverse sine of `x` in radians"),
-        FunctionDefinition('acos',  'x',  math.acos,               help_text="Inverse cosine of `x` in radians"),
-        FunctionDefinition('atan',  'x',  math.atan,               help_text="Inverse tangent of `x` in radians"),
-        FunctionDefinition('atan2', 'xy', math.atan2,              help_text="Inverse tangent of `y/x` in radians where the signs of `y` and `x` are considered"),
+        FunctionDefinition('sin',   'θ',  math.sin,   help_text="Sine of `θ` (radians)"),
+        FunctionDefinition('cos',   'θ',  math.cos,   help_text="Cosine of `θ` (radians)"),
+        FunctionDefinition('tan',   'θ',  math.tan,   help_text="Tangent of `θ` (radians)"),
+        FunctionDefinition('sec',   'θ',  sec,        help_text="Secant of `θ` in radians"),
+        FunctionDefinition('csc',   'θ',  csc,        help_text="Cosecant of `θ` in radians"),
+        FunctionDefinition('cot',   'θ',  cot,        help_text="Cotangent of `θ` in radians"),
+        FunctionDefinition('asin',  'x',  math.asin,  help_text="Inverse sine of `x` in radians"),
+        FunctionDefinition('acos',  'x',  math.acos,  help_text="Inverse cosine of `x` in radians"),
+        FunctionDefinition('atan',  'x',  math.atan,  help_text="Inverse tangent of `x` in radians"),
+        FunctionDefinition('atan2', 'xy', math.atan2, help_text="Inverse tangent of `y/x` in radians where the signs of `y` and `x` are considered"),
 
         # Hyperbolic Functions
         FunctionDefinition('sinh', 'x', math.sinh, help_text="Hyperbolic sine of `x`"),
@@ -455,39 +555,39 @@ def create_global_context():
         FunctionDefinition('tanh', 'x', math.tanh, help_text="Hyperbolic tangent of `x`"),
 
         # Exponential & Logarithmic Functions
-        FunctionDefinition('exp',   'x',  math.exp,   help_text="Equal to `e^x`"),
-        FunctionDefinition('ln',    'x',  math.log,   help_text="Natural logarithm of `x`"),
-        FunctionDefinition('log10', 'x',  math.log10, help_text="Base 10 logarithm of `x`"),
-        FunctionDefinition('log',   'xb', math.log,   help_text="Base `b` logarithm of `x`"),
+        FunctionDefinition('exp',   'x',  math.exp,                  help_text="Equal to `e^x`"),
+        FunctionDefinition('ln',    'x',  math.log,                  help_text="Natural logarithm of `x`"),
+        FunctionDefinition('log10', 'x',  math.log10, latex=tex_log, help_text="Base 10 logarithm of `x`"),
+        FunctionDefinition('log',   'xb', math.log,   latex=tex_log, help_text="Base `b` logarithm of `x`"),
 
         # Combinatorial & Random Functions
-        FunctionDefinition('fact',   'n',   math.factorial, help_text="Factorial of `n`"),
-        FunctionDefinition('perm',   'nk',  math.perm,      help_text="Number of permutations for selecting `k` items from a set of `n` total items"),
-        FunctionDefinition('choose', 'nk',  math.comb,      help_text="Number of combinations for selecting `k` items from a set of `n` total items"),
-        FunctionDefinition('binom',  'nxp', binomial,       help_text="Probability of an event with probability `p` happening exactly `x` times in `n` trials"),
-        FunctionDefinition('fib',    'n',   fibonacci,      help_text="`n`th fibonacci number"),
-        FunctionDefinition('rand',   '',    random,         help_text="Random real number between 0 and 1"),
-        FunctionDefinition('randr',  'ab',  randrange,      help_text="Random real number between `a` and `b`"),
+        FunctionDefinition('fact',   'n',   math.factorial, 7, latex=tex_fact,   help_text="Factorial of `n`"),
+        FunctionDefinition('perm',   'nk',  math.perm,                           help_text="Number of ways to choose `k` items from `n` items without repetition and with order"),
+        FunctionDefinition('choose', 'nk',  math.comb,         latex=tex_choose, help_text="Number of ways to choose `k` items from `n` items without repetition and without order"),
+        FunctionDefinition('binom',  'nxp', binomial,                            help_text="Probability of an event with probability `p` happening exactly `x` times in `n` trials"),
+        FunctionDefinition('fib',    'n',   fibonacci,                           help_text="`n`th fibonacci number"),
+        FunctionDefinition('rand',   '',    random,                              help_text="Random real number between 0 and 1"),
+        FunctionDefinition('randr',  'ab',  randrange,                           help_text="Random real number between `a` and `b`"),
 
         # Calculus
-        FunctionDefinition('int',    ['f()', 'a', 'b'], integrate,     help_text="Definite integral of `f(x)dx` from `a` to `b`"),
-        FunctionDefinition('deriv',  ['f()', 'x'],      differentiate, help_text="First derivative of `f(x)dx` evaluated at `x`"),
-        FunctionDefinition('nderiv', ['f()', 'x', 'n'], differentiate, help_text="`n`th derivative of `f(x)dx` evaluated at `x`"),
+        FunctionDefinition('int',    ['f()', 'a', 'b'], integrate,     latex=tex_integral, help_text="Definite integral of `f(x)dx` from `a` to `b`"),
+        FunctionDefinition('deriv',  ['f()', 'x'],      differentiate, latex=tex_deriv,    help_text="First derivative of `f(x)dx` evaluated at `x`"),
+        FunctionDefinition('nderiv', ['f()', 'x', 'n'], differentiate, latex=tex_deriv,    help_text="`n`th derivative of `f(x)dx` evaluated at `x`"),
 
         # Vectors & Matrices
-        FunctionDefinition('v',     ['*x'],    vector,      help_text="Creates a vector"),
-        FunctionDefinition('dot',   'vw',      vector.dot,  help_text="Vector dot product"),
-        FunctionDefinition('mag',   'v',       vector.mag,  help_text="Vector magnitude"),
-        FunctionDefinition('mag2',  'v',       vector.mag2, help_text="Vector magnitude squared"),
-        FunctionDefinition('norm',  'v',       vector.norm, help_text="Normalizes `v`"),
-        FunctionDefinition('zero',  'd',       vector.zero, help_text="`d` dimensional zero vector"),
-        FunctionDefinition('mat',   ['*cols'], matrix,      help_text="Creates a matrix from a set of column vectors"),
-        FunctionDefinition('I',     'n',       matrix.id,   help_text="`n` by `n` identity matrix"),
-        FunctionDefinition('shape', 'M',       shape,       help_text="Shape of a vector or matrix `M`"),
-        FunctionDefinition('mrow',  'Mr',      matrix.row,  help_text="`r`th row vector of `M`"),
-        FunctionDefinition('mcol',  'Mc',      matrix.col,  help_text="`c`th column vector of `M`"),
-        FunctionDefinition('mpos',  'Mrc',     matrix.pos,  help_text="Value at row `r` and column `c` of `M`"),
-        FunctionDefinition('vi',    'vi',      vector.i,    help_text="Value at index `i` of `v`"),
+        FunctionDefinition('v',     ['*x'],    vector,      latex=vector.latex, help_text="Creates a vector"),
+        FunctionDefinition('dot',   'vw',      vector.dot,  latex=tex_dot,      help_text="Vector dot product"),
+        FunctionDefinition('mag',   'v',       vector.mag,  latex=tex_mag,      help_text="Vector magnitude"),
+        FunctionDefinition('mag2',  'v',       vector.mag2, latex=tex_mag2,     help_text="Vector magnitude squared"),
+        FunctionDefinition('norm',  'v',       vector.norm,                     help_text="Normalizes `v`"),
+        FunctionDefinition('zero',  'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
+        FunctionDefinition('mat',   ['*cols'], matrix,      latex=matrix.latex, help_text="Creates a matrix from a set of column vectors"),
+        FunctionDefinition('I',     'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
+        FunctionDefinition('shape', 'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
+        FunctionDefinition('mrow',  'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
+        FunctionDefinition('mcol',  'Mc',      matrix.col,                      help_text="`c`th column vector of `M`"),
+        FunctionDefinition('mpos',  'Mrc',     matrix.pos,                      help_text="Value at row `r` and column `c` of `M`"),
+        FunctionDefinition('vi',    'vi',      vector.i,                        help_text="Value at index `i` of `v`"),
 
         # Linear Algebra
         # FunctionDefinition('det', 'M', determinant),

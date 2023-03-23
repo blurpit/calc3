@@ -78,6 +78,7 @@ class ExpressionSyntaxError(Exception):
             '^' * self.length
         )
 
+
 class Token:
     """
     A token is a single piece of an expression, such as a number, operator, function, etc.
@@ -102,6 +103,7 @@ class Token:
         :return: SyntaxNode, int, List[Child class of SyntaxNode]
         """
         raise NotImplemented
+
 
 class Node(Token):
     """
@@ -141,6 +143,9 @@ class Node(Token):
     def __repr__(self):
         raise NotImplemented
 
+    def latex(self, ctx):
+        raise NotImplemented
+
     def _tree_tag(self):
         raise NotImplemented
 
@@ -173,6 +178,22 @@ class Node(Token):
         # If a is left-associative and b is right-associative, evaluate b before a
         # If a is right-associative and b is left-associative, evaluate a before b
         return a.associativity == Associativity.R_TO_L
+
+    def is_left_parenthesized(self, child):
+        """ Returns true if `child` (to the left of the parent) should be parenthesized.
+            A node is parenthesized if it is a list or operator and has lower precedence
+            than its parent. """
+        if not isinstance(child, (ListNode, BinaryOperator, UnaryOperator)):
+            return False
+        return not Node.higher_precedence(child, self)
+
+    def is_right_parenthesized(self, child):
+        """ Returns true if `child` (to the right of the parent) should be parenthesized.
+            A node is parenthesized if it is a list or operator and has lower precedence
+            than its parent. """
+        if not isinstance(child, (ListNode, BinaryOperator, UnaryOperator)):
+            return False
+        return Node.higher_precedence(self, child)
 
     def propagate_precedence(self, binop):
         """ Propagate up the tree and return the first node with lower precedence than
@@ -212,6 +233,7 @@ class Node(Token):
         for i, node in enumerate(self.children):
             node.add_to_tree(tree, i)
 
+
 class ListNode(Node):
     def evaluate(self, ctx:Context):
         if len(self.children) == 0:
@@ -232,13 +254,18 @@ class ListNode(Node):
     def __repr__(self):
         return '{}{}'.format(type(self).__name__, repr(self.children))
 
+    def latex(self, ctx):
+        return ', '.join(node.latex(ctx) for node in self.children)
+
     def _tree_tag(self):
         return '{}()'.format(type(self).__name__)
+
 
 class EndOfExpression(Token):
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
         return node, i, None
+
 
 class BinaryOperator(Node):
     def __init__(self, op:BinaryOperatorDefinition):
@@ -273,40 +300,37 @@ class BinaryOperator(Node):
     def __str__(self):
         left = self.children[0]
         right = self.children[1]
+        implicit = ImplicitMultiplication.is_implicit(self, left, right)
 
-        is_implicit = ImplicitMultiplication.is_implicit(self, left, right)
-        parens_left, parens_right = self._is_parens(left, right)
+        if self.is_left_parenthesized(left):
+            left = '(' + str(left) + ')'
+        if self.is_right_parenthesized(right):
+            right = '(' + str(right) + ')'
 
-        left = str(left)
-        right = str(right)
-
-        if parens_left:
-            left = '(' + left + ')'
-        if parens_right:
-            right = '(' + right + ')'
-
-        if is_implicit:
-            return left + right
+        if implicit:
+            return str(left) + str(right)
         else:
-            return left + self.symbol + right
+            return str(left) + self.symbol + str(right)
 
     def __repr__(self):
         left = repr(self.children[0]) if len(self.children) > 0 else '?'
         right = repr(self.children[1]) if len(self.children) > 1 else '?'
         return 'BinaryOperator({}, {}, {})'.format(left, self.symbol, right)
 
+    def latex(self, ctx):
+        left = self.children[0]
+        right = self.children[1]
+
+        definition = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
+        return definition.fill_latex(
+            ctx, left, right,
+            self.is_left_parenthesized(left), self.is_right_parenthesized(right),
+            ImplicitMultiplication.is_implicit(self, left, right)
+        )
+
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
 
-    def _is_parens(self, left, right):
-        """ Whether the left & right should be parenthesized """
-        # If the child node has higher precedence, it means the child was parenthesized,
-        # assuming the child is an operator and not a function/number.
-        parens_right = isinstance(right, (BinaryOperator, UnaryOperator, ListNode)) \
-                       and Node.higher_precedence(self, right)
-        parens_left = isinstance(left, (BinaryOperator, UnaryOperator, ListNode)) \
-                      and not Node.higher_precedence(left, self)
-        return parens_left, parens_right
 
 class UnaryOperator(Node):
     def __init__(self, op:UnaryOperatorDefinition):
@@ -334,23 +358,23 @@ class UnaryOperator(Node):
     def __str__(self):
         right = self.children[0]
 
-        # Same logic as BinaryOperator.__str__
-        parens_right = isinstance(right, (BinaryOperator, UnaryOperator, ListNode)) \
-                       and Node.higher_precedence(self, right)
+        if self.is_right_parenthesized(right):
+            right = '(' + str(right) + ')'
 
-        right = str(right)
-
-        if parens_right:
-            right = '(' + right + ')'
-
-        return self.symbol + right
+        return self.symbol + str(right)
 
     def __repr__(self):
         operand = repr(self.children[0]) if len(self.children) > 0 else '?'
         return 'UnaryOperator({}, {})'.format(self.symbol, operand)
 
+    def latex(self, ctx):
+        right = self.children[0]
+        definition = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
+        return definition.fill_latex(ctx, right, self.is_right_parenthesized(right))
+
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
+
 
 class Parenthesis(Token):
     @classmethod
@@ -416,6 +440,7 @@ class Parenthesis(Token):
 
         return j - 1
 
+
 class FunctionCall(Token):
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
@@ -438,6 +463,7 @@ class FunctionCall(Token):
         if explicit:
             return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
         return [Number, Identifier, EndOfExpression]
+
 
 class Number(Node):
     def __init__(self, n):
@@ -488,8 +514,12 @@ class Number(Node):
     def __str__(self):
         return str(self.value)
 
+    def latex(self, ctx):
+        return str(self.value)
+
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.value)
+
 
 class Identifier(Node):
     def __init__(self, definition:Definition):
@@ -544,8 +574,12 @@ class Identifier(Node):
                 for i in range(self.n_args)]
         return '{}({}, {})'.format(type(self).__name__, self.name, ', '.join(args))
 
+    def latex(self, ctx):
+        raise NotImplemented
+
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.name, self.n_args)
+
 
 class Function(Identifier):
     def next_expected(self):
@@ -577,6 +611,11 @@ class Function(Identifier):
         args = ', '.join(map(arg_str, self.children))
         return '{}({})'.format(name, args)
 
+    def latex(self, ctx):
+        definition = ctx.get(self.name)
+        return definition.fill_latex(ctx, *self.children)
+
+
 class Variable(Identifier):
     def next_expected(self):
         return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
@@ -593,6 +632,11 @@ class Variable(Identifier):
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.name)
+
+    def latex(self, ctx):
+        definition = ctx.get(self.name)
+        return definition.fill_latex(ctx)
+
 
 class ImplicitMultiplication(Token):
     # after: number, variable
@@ -635,10 +679,11 @@ class ImplicitMultiplication(Token):
             # Don't use implicit multiplication if the right is also a multiply
             return False
 
-        if Node.higher_precedence(right, binop):
+        if Node.higher_precedence(right, binop) and isinstance(right.leftmost_leaf(), Number):
             # Don't use implicit multiplication if the right node has higher precedence
-            # than multiply
-            # Ex. 4(2^3) -> 4*2^3
+            # than multiply (means it won't be parenthesized) and the leftmost token is a
+            # number.
+            # Ex. 4(2^3) -> 4*2^3 but 4(x^2) -> 4x^2
             return False
 
         # if isinstance(left.rightmost_leaf(), Identifier) \
@@ -647,6 +692,7 @@ class ImplicitMultiplication(Token):
         #     return False
 
         return True
+
 
 class Declaration(Node):
     """ A declaration of a new identifier.
@@ -814,6 +860,11 @@ class Declaration(Node):
             ', '.join(self.definition.args),
             repr(self.root)
         )
+
+    def latex(self, ctx):
+        with ctx.with_scope():
+            self.definition.add_args_to_context(ctx, None)
+            return self.definition.fill_latex(ctx)
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.definition.signature)
