@@ -255,7 +255,7 @@ class ListNode(Node):
         return '{}{}'.format(type(self).__name__, repr(self.children))
 
     def latex(self, ctx):
-        return ', '.join(node.latex(ctx) for node in self.children)
+        return ',\, '.join(node.latex(ctx) for node in self.children)
 
     def _tree_tag(self):
         return '{}()'.format(type(self).__name__)
@@ -595,7 +595,7 @@ class Function(Identifier):
 
         # Evaluate arguments & pass it to the function
         inputs = list(self._eval_children(ctx, definition))
-        definition.check_inputs(inputs)
+        definition.check_inputs(len(inputs))
         return definition(*inputs)
 
     def __str__(self):

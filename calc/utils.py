@@ -20,7 +20,7 @@ except ImportError:
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
-from .parser import parse, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Node, Variable
+from .parser import parse, Node, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable
 
 __all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_global_context']
 
@@ -98,7 +98,6 @@ def console(ctx:Context, show_time=False):
                 try:
                     t = time.time()
                     result = evaluate(ctx, exp)
-                    # result = latex(ctx, exp)
                     t = time.time() - t
 
                     if isinstance(result, DeclaredFunction):
@@ -462,10 +461,33 @@ def tex_integral(self, ctx, f, a, b):
             inputs = (Variable(ctx.get(arg)) for arg in definition.args)
             body = definition.fill_latex(ctx, *inputs)
 
-        return r'\int_{{{}}}^{{{}}} {{{}}} \,d{}'.format(a.latex(ctx), b.latex(ctx), body, differential)
+        return r'\int_{{{}}}^{{{}}} {{{}}} \, d{}'.format(a.latex(ctx), b.latex(ctx), body, differential)
 
 def tex_deriv(self, ctx):
     pass
+
+def tex_vec(self, ctx, *args):
+    return vector(*args).latex(ctx)
+
+def tex_mat(self, ctx, *args):
+    def get_column(arg):
+        """ Turns a passed argument (Node object) into a column vector. """
+        if isinstance(arg, ListNode):
+            # List node "(1,2,3)"
+            return vector(*arg.children)
+        elif isinstance(arg, Function) and ctx.get(arg.name).func == vector:
+            # Vector function call "v(1,2,3)"
+            return vector(*arg.children)
+        elif isinstance(arg, Variable):
+            # Arg is a variable. If the variable's value is a vector, use it
+            # as the column.
+            val = ctx.get(arg.name).func
+            if isinstance(val, vector):
+                return val
+        return arg
+
+    columns = (get_column(arg) for arg in args)
+    return matrix(*columns).latex(ctx)
 
 def tex_dot(self, ctx):
     pass
@@ -474,6 +496,9 @@ def tex_mag(self, ctx):
     pass
 
 def tex_mag2(self, ctx):
+    pass
+
+def tex_transp(self, ctx):
     pass
 
 
@@ -575,19 +600,20 @@ def create_global_context():
         FunctionDefinition('nderiv', ['f()', 'x', 'n'], differentiate, latex=tex_deriv,    help_text="`n`th derivative of `f(x)dx` evaluated at `x`"),
 
         # Vectors & Matrices
-        FunctionDefinition('v',     ['*x'],    vector,      latex=vector.latex, help_text="Creates a vector"),
-        FunctionDefinition('dot',   'vw',      vector.dot,  latex=tex_dot,      help_text="Vector dot product"),
-        FunctionDefinition('mag',   'v',       vector.mag,  latex=tex_mag,      help_text="Vector magnitude"),
-        FunctionDefinition('mag2',  'v',       vector.mag2, latex=tex_mag2,     help_text="Vector magnitude squared"),
-        FunctionDefinition('norm',  'v',       vector.norm,                     help_text="Normalizes `v`"),
-        FunctionDefinition('zero',  'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
-        FunctionDefinition('mat',   ['*cols'], matrix,      latex=matrix.latex, help_text="Creates a matrix from a set of column vectors"),
-        FunctionDefinition('I',     'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
-        FunctionDefinition('shape', 'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
-        FunctionDefinition('mrow',  'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
-        FunctionDefinition('mcol',  'Mc',      matrix.col,                      help_text="`c`th column vector of `M`"),
-        FunctionDefinition('mpos',  'Mrc',     matrix.pos,                      help_text="Value at row `r` and column `c` of `M`"),
-        FunctionDefinition('vi',    'vi',      vector.i,                        help_text="Value at index `i` of `v`"),
+        FunctionDefinition('v',      ['*x'],    vector,        latex=tex_vec,    help_text="Creates a vector"),
+        FunctionDefinition('dot',    'vw',      vector.dot,    latex=tex_dot,    help_text="Vector dot product"),
+        FunctionDefinition('mag',    'v',       vector.mag,    latex=tex_mag,    help_text="Vector magnitude"),
+        FunctionDefinition('mag2',   'v',       vector.mag2,   latex=tex_mag2,   help_text="Vector magnitude squared"),
+        FunctionDefinition('norm',   'v',       vector.norm,                     help_text="Normalizes `v`"),
+        FunctionDefinition('zero',   'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
+        FunctionDefinition('mat',    ['*cols'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a set of column vectors"),
+        FunctionDefinition('I',      'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
+        FunctionDefinition('shape',  'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
+        FunctionDefinition('mrow',   'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
+        FunctionDefinition('mcol',   'Mc',      matrix.col,                      help_text="`c`th column vector of `M`"),
+        FunctionDefinition('mpos',   'Mrc',     matrix.pos,                      help_text="Value at row `r` and column `c` of `M`"),
+        FunctionDefinition('transp', 'M',       matrix.transp, latex=tex_transp, help_text="Transpose of matrix `M`"),
+        FunctionDefinition('vi',     'vi',      vector.i,                        help_text="Value at index `i` of `v`"),
 
         # Linear Algebra
         # FunctionDefinition('det', 'M', determinant),

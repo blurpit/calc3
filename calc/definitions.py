@@ -45,8 +45,7 @@ class Definition:
         self.manual_eval = kwargs.get('manual_eval', False)
         self.help_text = kwargs.get('help_text', None)
 
-    def check_inputs(self, inputs):
-        n_inputs = len(inputs)
+    def check_inputs(self, n_inputs):
         if self.manual_eval:
             # manual eval funcs have an extra ctx input
             n_inputs -= 1
@@ -155,10 +154,11 @@ class FunctionDefinition(Definition):
         inputted when parsed and converted back to a string. Ex. the funcion declaration
         "f(x)=2pix" will be shown as "f(x) = 2πx" when printed.
 
-        `latex` should be a function that that takes a Context and the inputs of the function
-        (passed as *args) and returns a LaTeX string. This is useful for special functions
-        that should be rendered differently from the standard ``name(a, b, c)`` in latex,
-        integrals for example. Use ``.latex(ctx)`` to convert an input to latex.
+        `latex` should be a function that that takes self (this FunctionDefinition), a
+        Context, and the inputs of the function (passed as *args) and returns a LaTeX string.
+        This is useful for special functions that should be rendered differently from the
+        standard ``name(a, b, c)`` in latex, integrals for example. Use ``.latex(ctx)`` to
+        convert an input to latex.
 
         `help_text` will be shown when evaluating ``help([name])``. If none is provided, it
         will use the docstring associated with `func`. If that is also not provided, it will
@@ -225,6 +225,12 @@ class FunctionDefinition(Definition):
         )
 
     def fill_latex(self, ctx, *inputs):
+        n_inputs = len(inputs)
+        if self.manual_eval:
+            # add phantom `ctx` input for manual_eval functions
+            n_inputs += 1
+        self.check_inputs(n_inputs)
+
         if self._latex_func:
             return self._latex_func(self, ctx, *inputs)
 
@@ -281,7 +287,7 @@ class DeclaredFunction(FunctionDefinition):
         self.ctx = ctx
 
     def __call__(self, *inputs):
-        self.check_inputs(inputs)
+        self.check_inputs(len(inputs))
 
         # Check cached value
         if self._is_const and self._value is not self._undefined:
@@ -485,7 +491,11 @@ class vector(list):
         return '{}({})'.format(type(self).__name__, ', '.join(map(repr, self)))
 
     def latex(self, ctx):
-        return r'<vector latex>'
+        vec = r' \\ '.join(
+            x.latex(ctx) if hasattr(x, 'latex') else str(x)
+            for x in self
+        )
+        return r'\begin{bmatrix} ' + vec + r' \end{bmatrix}'
 
 class matrix(list):
     def __init__(self, *cols):
@@ -538,6 +548,13 @@ class matrix(list):
         raise TypeError("unsupported operand type(s) for *: '{}' and '{}'"
                         .format(type(other).__name__, type(self).__name__))
 
+    def copy(self):
+        return matrix(*(col.copy() for col in self))
+
+    def transp(self):
+        """ Returns the transpose of the matrix """
+        return matrix(*(self.row(r) for r in range(self.shape[0])))
+
     def row(self, r):
         """ Returns the rth row vector of the matrix """
         return vector(*(
@@ -570,7 +587,14 @@ class matrix(list):
         return '{}({})'.format(type(self).__name__, ', '.join(map(repr, self)))
 
     def latex(self, ctx):
-        return r'<matrix latex>'
+        body = r' \\ '.join(
+            r' & '.join(
+                x.latex(ctx) if hasattr(x, 'latex') else str(x)
+                for x in column
+            )
+            for column in self.transp()
+        )
+        return r'\begin{bmatrix} ' + body + r' \end{bmatrix}'
 
 
 _latex_substitutions = {
