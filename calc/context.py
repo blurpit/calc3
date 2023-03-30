@@ -34,6 +34,8 @@ class Context:
         if isinstance(item, tuple):
             if len(item) != 2:
                 return False
+        elif isinstance(item, Definition):
+            item = (item.name, item.token_type)
         else:
             item = (item, DefinitionType.IDENTIFIER)
 

@@ -270,13 +270,11 @@ class DeclaredFunction(FunctionDefinition):
     ``f``. Declared functions can be called like a normal function (``f(4)`` will return
     48) or added to a context using ``ctx.add(f)``.
     """
-    _undefined = object()
 
     def __init__(self, name, args, is_const):
         super().__init__(name, args, None)
         self.ctx = None
         self._is_const = is_const and len(args) == 0
-        self._value = self._undefined
 
     def copy(self):
         """ Make a shallow copy of this definition object """
@@ -290,7 +288,7 @@ class DeclaredFunction(FunctionDefinition):
         self.check_inputs(len(inputs))
 
         # Check cached value
-        if self._is_const and self._value is not self._undefined:
+        if self._is_const and hasattr(self, '_value'):
             return self._value
 
         with self.ctx.with_scope():

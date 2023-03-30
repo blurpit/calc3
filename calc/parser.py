@@ -162,22 +162,21 @@ class Node(Token):
         node.parent = self.parent
         node.add_child(self)
 
-    @staticmethod
-    def higher_precedence(a, b):
-        """ Returns True if this `a` precedence is greater than `b`, in other words
-            that `a` should be evaluated before `b`. Both should be ``Node`` objects. """
+    def higher_precedence(self, other):
+        """ Returns True if this node's precedence is greater than `other`, in other words
+            that self should be evaluated before `other`. """
         # If precedence is not equal, the higher one should be evaluated first
-        if a.precedence != b.precedence:
-            return a.precedence > b.precedence
+        if self.precedence != other.precedence:
+            return self.precedence > other.precedence
 
         # If the precedence and associativities are the same, a should be first if
         # it is left-to-right associative
-        if a.associativity == b.associativity:
-            return a.associativity == Associativity.L_TO_R
+        if self.associativity == other.associativity:
+            return self.associativity == Associativity.L_TO_R
 
         # If a is left-associative and b is right-associative, evaluate b before a
         # If a is right-associative and b is left-associative, evaluate a before b
-        return a.associativity == Associativity.R_TO_L
+        return self.associativity == Associativity.R_TO_L
 
     def is_left_parenthesized(self, child):
         """ Returns true if `child` (to the left of the parent) should be parenthesized.
@@ -185,7 +184,7 @@ class Node(Token):
             than its parent. """
         if not isinstance(child, (ListNode, BinaryOperator, UnaryOperator)):
             return False
-        return not Node.higher_precedence(child, self)
+        return not child.higher_precedence(self)
 
     def is_right_parenthesized(self, child):
         """ Returns true if `child` (to the right of the parent) should be parenthesized.
@@ -193,14 +192,14 @@ class Node(Token):
             than its parent. """
         if not isinstance(child, (ListNode, BinaryOperator, UnaryOperator)):
             return False
-        return Node.higher_precedence(self, child)
+        return self.higher_precedence(child)
 
     def propagate_precedence(self, binop):
         """ Propagate up the tree and return the first node with lower precedence than
             the given operator. """
         # If associativity is left-to-right, keep propagating up when precedence is equal.
         node = self
-        while node.parent and Node.higher_precedence(node.parent, binop):
+        while node.parent and node.parent.higher_precedence(binop):
             node = node.parent
         return node
 
@@ -334,9 +333,8 @@ class BinaryOperator(Node):
 
 class UnaryOperator(Node):
     def __init__(self, op:UnaryOperatorDefinition):
-        super().__init__()
+        super().__init__(op.precedence, op.associativity)
         self.symbol = op.name
-        self.precedence = op.precedence
 
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
@@ -679,7 +677,7 @@ class ImplicitMultiplication(Token):
             # Don't use implicit multiplication if the right is also a multiply
             return False
 
-        if Node.higher_precedence(right, binop) and isinstance(right.leftmost_leaf(), Number):
+        if right.higher_precedence(binop) and isinstance(right.leftmost_leaf(), Number):
             # Don't use implicit multiplication if the right node has higher precedence
             # than multiply (means it won't be parenthesized) and the leftmost token is a
             # number.

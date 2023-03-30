@@ -433,7 +433,7 @@ def tex_log(self, ctx, x, b=None):
     return r'log_{{{}}}\left( {} \right)'.format(b, x)
 
 def tex_fact(self, ctx, n):
-    if Node.is_left_parenthesized(self, n):
+    if Function(self).is_left_parenthesized(n):
         return r'\left({{{}}}\right)!'.format(n.latex(ctx))
     return r'{{{}}}!'.format(n.latex(ctx))
 
@@ -523,7 +523,7 @@ def create_global_context():
         BinaryOperatorDefinition('*', operator.mul,     4, Associativity.L_TO_R,                help_text="Multiplication operator"),
         BinaryOperatorDefinition('/', operator.truediv, 4, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
         BinaryOperatorDefinition('%', operator.mod,     4, Associativity.L_TO_R,                help_text="Remainder operator"),
-        BinaryOperatorDefinition('^', operator.pow,     6, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
+        BinaryOperatorDefinition('^', operator.pow,     5, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
         BinaryOperatorDefinition('&', and_,             4, Associativity.L_TO_R,                help_text="Logical AND operator", manual_eval=True),
         BinaryOperatorDefinition('|', or_,              2, Associativity.L_TO_R,                help_text="Logical OR operator", manual_eval=True),
 
