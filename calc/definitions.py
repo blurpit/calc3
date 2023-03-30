@@ -140,7 +140,7 @@ class FunctionDefinition(Definition):
 
         `args` should be a list of strings which represent the name of each argument.
         If this function takes another function as an argument, add () to the name of
-        that argument, for example args=['f()', 'x'] takes a function `f` and a
+        that argument, for example ``args=['f()', 'x']`` takes a function `f` and a
         variable `x` as inputs.
 
         `func` should be a callable if the function takes 1 or more arguments, otherwise
@@ -168,7 +168,7 @@ class FunctionDefinition(Definition):
         then they will not be evaluated, and instead `func` will be passed first the
         context, then the ``Node`` objects representing the inputs to the function. Use
         ``.evaluate(ctx)`` to evaluate them manually. This can be useful for some functions
-        that need to short-circuit, such as ``if(condition, if_T, if_F)``, where if the
+        that need to short-circuit, such as ``if(condition, if_t, if_f)``, where if the
         condition is true, ``false`` should not be evaluated.
 
         :param name: Name of the function
@@ -226,6 +226,11 @@ class FunctionDefinition(Definition):
 
     def fill_latex(self, ctx, *inputs):
         n_inputs = len(inputs)
+
+        if n_inputs == 0 and len(self.args) > 0:
+            # No function call
+            return replace_latex_symbols(self.signature)
+
         if self.manual_eval:
             # add phantom `ctx` input for manual_eval functions
             n_inputs += 1
@@ -304,19 +309,18 @@ class DeclaredFunction(FunctionDefinition):
         return self._is_const
 
     def __str__(self):
-        if self._is_const and self._value is not self._undefined:
-            return '{} = {}'.format(self.signature, self._value)
+        if self._is_const and hasattr(self, '_value'):
+            if type(self._value) == list:
+                body = ', '.join(map(str, self._value))
+            else:
+                body = str(self._value)
         else:
-            return '{} = {}'.format(self.signature, self.func)
+            body = str(self.func)
 
-    def fill_latex(self, ctx, *inputs):
-        signature = r'{}\left( {} \right)'.format(
-            self.display_name or self.name,
-            ', '.join(self.args)
-        )
-        signature = replace_latex_symbols(signature)
-        body = self.func.latex(ctx)
-        return '{} = {}'.format(signature, body)
+        if type(self.func).__name__ == 'ListNode':
+            # add parentheses if the function returns a list "f(x)=(1,2,3), 4"
+            body = '(' + body + ')'
+        return '{} = {}'.format(self.signature, body)
 
 
 class BinaryOperatorDefinition(Definition):
@@ -596,11 +600,12 @@ class matrix(list):
 
 
 _latex_substitutions = {
+    # Lower case greek letters
     'α': r'\alpha',
     'β': r'\beta',
     'γ': r'\gamma',
     'δ': r'\delta',
-    'ε': r'\epsilon',
+    'ε': r'\varepsilon',
     'ζ': r'\zeta',
     'η': r'\eta',
     'θ': r'\theta',
@@ -615,10 +620,39 @@ _latex_substitutions = {
     'σ': r'\sigma',
     'τ': r'\tau',
     'υ': r'\upsilon',
-    'φ': r'\phi',
+    'ϕ': r'\phi',
+    'φ': r'\varphi',
     'χ': r'\chi',
     'ψ': r'\psi',
     'ω': r'\omega',
+
+    # Upper case greek letters
+    'Α': r'A',
+    'Β': r'B',
+    'Γ': r'\Gamma',
+    'Δ': r'\Delta',
+    'Ε': r'E',
+    'Ζ': r'Z',
+    'Η': r'H',
+    'Θ': r'\Theta',
+    'Ι': r'I',
+    'Κ': r'K',
+    'Λ': r'\Lambda',
+    'Μ': r'M',
+    'Ν': r'N',
+    'Ξ': r'\Xi',
+    'Ο': r'O',
+    'Π': r'\Pi',
+    'Ρ': r'P',
+    'Σ': r'\Sigma',
+    'Τ': r'T',
+    'Υ': r'\Upsilon',
+    'Φ': r'\Phi',
+    'Χ': r'X',
+    'Ψ': r'\Psi',
+    'Ω': r'\Omega',
+
+    # Math symbols
     '∞': r'\infty',
     '∅': r'\emptyset',
     '∂': r'\partial',
@@ -627,8 +661,11 @@ _latex_substitutions = {
     'ℝ': r'\mathbb{R}',
     'ℂ': r'\mathbb{C}',
     'ℕ': r'\mathbb{N}',
-    '*': r'\cdot',
-    '_': r'\_'
+
+    # Misc.
+    '_': r'\_',
+    '(': r'\left(',
+    ')': r'\right)',
 }
 
 def replace_latex_symbols(s):

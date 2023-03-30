@@ -20,7 +20,7 @@ except ImportError:
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
-from .parser import parse, Node, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable
+from .parser import parse, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable
 
 __all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_global_context']
 
@@ -401,6 +401,20 @@ def tex_div(self, ctx, left, right, *_):
     right = right.latex(ctx)
     return r'\frac{{{}}}{{{}}}'.format(left, right)
 
+def tex_mul(self, ctx, left, right, parens_left, parens_right, is_implicit):
+    left = left.latex(ctx)
+    right = right.latex(ctx)
+
+    if parens_left:
+        left = r'\left( ' + left + r' \right)'
+    if parens_right:
+        right = r'\left( ' + right + r' \right)'
+
+    if is_implicit:
+        return left + ' ' + right
+    else:
+        return r'{} \cdot {}'.format(left, right)
+
 def tex_pow(self, ctx, left, right, parens_left, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
@@ -419,6 +433,16 @@ def tex_floor(self, ctx, x):
 def tex_ceil(self, ctx, x):
     x = x.latex(ctx)
     return r'\lceil{' + x + r'}\rceil'
+
+def tex_if(self, ctx, condition, if_true, if_false):
+    return r'\begin{{cases}} ' \
+           r'{} & \text{{if }} {} \neq 0 \\' \
+           r'{} & \text{{otherwise}} ' \
+           r'\end{{cases}}'.format(
+        if_true.latex(ctx),
+        condition.latex(ctx),
+        if_false.latex(ctx)
+    )
 
 def tex_root(self, ctx, x, n=None):
     x = x.latex(ctx)
@@ -489,17 +513,17 @@ def tex_mat(self, ctx, *args):
     columns = (get_column(arg) for arg in args)
     return matrix(*columns).latex(ctx)
 
-def tex_dot(self, ctx):
-    pass
+def tex_dot(self, ctx, v, w):
+    return r'{} \cdot {}'.format(v.latex(ctx), w.latex(ctx))
 
-def tex_mag(self, ctx):
-    pass
+def tex_mag(self, ctx, v):
+    return r'\left\| {} \right\|'.format(v.latex(ctx))
 
-def tex_mag2(self, ctx):
-    pass
+def tex_mag2(self, ctx, v):
+    return r'{{\left\| {} \right\|}}^{{2}}'.format(v.latex(ctx))
 
-def tex_transp(self, ctx):
-    pass
+def tex_transp(self, ctx, m):
+    return r'{{{}}}^{{T}}'.format(m.latex(ctx))
 
 
 def create_global_context():
@@ -520,7 +544,7 @@ def create_global_context():
         BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R,                help_text="Concatenation operator"),
         BinaryOperatorDefinition('+', operator.add,     2, Associativity.L_TO_R,                help_text="Addition operator"),
         BinaryOperatorDefinition('-', operator.sub,     2, Associativity.L_TO_R,                help_text="Subtraction operator"),
-        BinaryOperatorDefinition('*', operator.mul,     4, Associativity.L_TO_R,                help_text="Multiplication operator"),
+        BinaryOperatorDefinition('*', operator.mul,     4, Associativity.L_TO_R, latex=tex_mul, help_text="Multiplication operator"),
         BinaryOperatorDefinition('/', operator.truediv, 4, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
         BinaryOperatorDefinition('%', operator.mod,     4, Associativity.L_TO_R,                help_text="Remainder operator"),
         BinaryOperatorDefinition('^', operator.pow,     5, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
@@ -548,14 +572,14 @@ def create_global_context():
         FunctionDefinition('latex', ['expr'],         latex_, help_text="Convert an expression into LaTeX code", manual_eval=True),
 
         # Logic & Data structure functions
-        FunctionDefinition('sum',    ['*x'], sum_,                       help_text="Sum of `x`"),
-        FunctionDefinition('len',    ['*x'], len_,                       help_text="Length of `x`"),
-        FunctionDefinition('filter', ['f()', '*x'], filter_,             help_text="Filter `x` for elements where `f` evaluates to true"),
-        FunctionDefinition('range',  ['start', 'stop'], range_,          help_text="List of integers from `start` (inclusive) to `stop` (exclusive)"),
-        FunctionDefinition('max',    ['*x'], max,                        help_text="Returns the largest element of `x`"),
-        FunctionDefinition('min',    ['*x'], min,                        help_text="Returns the smallest element of `x`"),
-        FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
-        FunctionDefinition('set',    ['*x'], set_,                       help_text="Removes duplicates from a list"),
+        FunctionDefinition('sum',    ['*x'], sum_,                                     help_text="Sum of `x`"),
+        FunctionDefinition('len',    ['*x'], len_,                                     help_text="Length of `x`"),
+        FunctionDefinition('filter', ['f()', '*x'], filter_,                           help_text="Filter `x` for elements where `f` evaluates to true"),
+        FunctionDefinition('range',  ['start', 'stop'], range_,                        help_text="List of integers from `start` (inclusive) to `stop` (exclusive)"),
+        FunctionDefinition('max',    ['*x'], max,                                      help_text="Returns the largest element of `x`"),
+        FunctionDefinition('min',    ['*x'], min,                                      help_text="Returns the smallest element of `x`"),
+        FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_, latex=tex_if, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
+        FunctionDefinition('set',    ['*x'], set_,                                     help_text="Removes duplicates from a list"),
 
         # Roots & Complex Functions
         FunctionDefinition('sqrt',  'x',  math.sqrt, latex=tex_root, help_text="Square root of `x`"),

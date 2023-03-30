@@ -1,6 +1,6 @@
 from .context import Context
 from .definitions import is_identifier, Associativity, DefinitionType, Definition, BinaryOperatorDefinition, \
-    UnaryOperatorDefinition, DeclaredFunction
+    UnaryOperatorDefinition, DeclaredFunction, replace_latex_symbols
 
 
 def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
@@ -861,8 +861,26 @@ class Declaration(Node):
 
     def latex(self, ctx):
         with ctx.with_scope():
+            if not self.definition.name in ctx:
+                ctx.add(self.definition)
             self.definition.add_args_to_context(ctx, None)
-            return self.definition.fill_latex(ctx)
+
+            signature = self.definition.signature
+            signature = replace_latex_symbols(signature)
+            body = self.definition.func.latex(ctx)
+            if isinstance(self.definition.func, ListNode):
+                body = r'\left( ' + body + r' \right)'
+
+            result = '{} = {}'.format(signature, body)
+
+            if len(self.children) > 0:
+                # Lambda call "(f(x)=3x)(6)"
+                result = r'\left( {} \right)\left( {} \right)'.format(
+                    result,
+                    ',\, '.join(node.latex(ctx) for node in self.children)
+                )
+
+        return result
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.definition.signature)
