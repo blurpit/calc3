@@ -317,6 +317,9 @@ def and_(ctx, a, b):
 def or_(ctx, a, b):
     return a.evaluate(ctx) or b.evaluate(ctx)
 
+def not_(x):
+    return int(x == 0)
+
 def type_(obj):
     return type(obj).__name__
 
@@ -617,6 +620,7 @@ def create_global_context():
 
         # Unary operators
         UnaryOperatorDefinition('-', operator.neg, help_text="Unary negation operator"),
+        UnaryOperatorDefinition('!', not_,         help_text="Logical NOT operator"),
 
         # Basic Functions
         FunctionDefinition('neg',   'x', operator.neg,                     help_text="Negates `x`"),
@@ -630,16 +634,16 @@ def create_global_context():
 
         # Informational Functions
         FunctionDefinition('type',  ['obj'],          type_,  help_text="Gets the type of `obj`"),
-        FunctionDefinition('help',  ['obj'],          help_,  help_text="Provide a description for the given object", manual_eval=True),
-        FunctionDefinition('tree',  ['expr'],         tree_,  help_text="Display the syntax tree structure", manual_eval=True),
-        FunctionDefinition('graph', ['f()', '*args'], graph_, help_text="Graph a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
-        FunctionDefinition('latex', ['expr'],         latex_, help_text="Convert an expression into LaTeX code", manual_eval=True),
+        FunctionDefinition('help',  ['obj'],          help_,  help_text="Provides a description for the given identifier", manual_eval=True),
+        FunctionDefinition('tree',  ['expr'],         tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True),
+        FunctionDefinition('graph', ['f()', '*args'], graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
+        FunctionDefinition('latex', ['expr'],         latex_, help_text="Converts an expression into LaTeX code", manual_eval=True),
 
         # Logic & Data structure functions
         FunctionDefinition('sum',    ['*x'], sum_,                                     help_text="Sum of `x`"),
         FunctionDefinition('len',    ['*x'], len_,                                     help_text="Length of `x`"),
-        FunctionDefinition('filter', ['f()', '*x'], filter_,                           help_text="Filter `x` for elements where `f` evaluates to true"),
-        FunctionDefinition('range',  ['start', 'stop'], range_,                        help_text="List of integers from `start` (inclusive) to `stop` (exclusive)"),
+        FunctionDefinition('filter', ['f()', '*x'], filter_,                           help_text="Filters `x` for elements where `f(x)` is nonzero"),
+        FunctionDefinition('range',  ['start', 'stop'], range_,                        help_text="Returns a list of integers from `start` (inclusive) to `stop` (exclusive)"),
         FunctionDefinition('max',    ['*x'], max,                                      help_text="Returns the largest element of `x`"),
         FunctionDefinition('min',    ['*x'], min,                                      help_text="Returns the smallest element of `x`"),
         FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_, latex=tex_if, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
