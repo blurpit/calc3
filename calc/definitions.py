@@ -6,6 +6,7 @@ from enum import Enum
 def is_identifier(name:str):
     return name.isidentifier()
 
+
 class Associativity(Enum):
     """
     Associativity defines the direction operators and functions are evaluated when strung
@@ -28,6 +29,7 @@ class DefinitionType(Enum):
     IDENTIFIER = 0
     BINARY_OPERATOR = 1
     UNARY_OPERATOR = 2
+
 
 class Definition:
     precedence = 3
@@ -100,9 +102,6 @@ class Definition:
             self.display_name or self.name,
             ', '.join(map(argname, range(len(self.args))))
         )
-
-    def fill_latex(self, *args, **kwargs):
-        return replace_latex_symbols(self.display_name or self.name)
 
     @property
     def is_constant(self):
@@ -216,32 +215,12 @@ class FunctionDefinition(Definition):
 
         if precedence is not None:
             self.precedence = precedence
-        self._latex_func = latex
+        self.latex_func = latex
 
         super().__init__(
             name, args, f_args, func,
             star_arg=star_arg, display_name=display_name,
             manual_eval=manual_eval, help_text=help_text
-        )
-
-    def fill_latex(self, ctx, *inputs):
-        n_inputs = len(inputs)
-
-        if n_inputs == 0 and len(self.args) > 0:
-            # No function call
-            return replace_latex_symbols(self.signature)
-
-        if self.manual_eval:
-            # add phantom `ctx` input for manual_eval functions
-            n_inputs += 1
-        self.check_inputs(n_inputs)
-
-        if self._latex_func:
-            return self._latex_func(self, ctx, *inputs)
-
-        return r'{}\left( {} \right)'.format(
-            replace_latex_symbols(self.name),
-            ', '.join(node.latex(ctx) for node in inputs)
         )
 
 
@@ -263,9 +242,6 @@ class VariableDefinition(Definition):
             display_name=display_name, help_text=help_text
         )
         self.latex_name = latex
-
-    def fill_latex(self, ctx):
-        return replace_latex_symbols(self.latex_name or self.display_name or self.name)
 
 
 class DeclaredFunction(FunctionDefinition):
@@ -361,31 +337,15 @@ class BinaryOperatorDefinition(Definition):
         )
         self.precedence = precedence
         self.associativity = associativity
-        self._latex_func = latex
+        self.latex_func = latex
 
-    def fill_latex(self, ctx, left, right, parens_left, parens_right, is_implicit):
-        if self._latex_func:
-            return self._latex_func(self, ctx, left, right, parens_left, parens_right, is_implicit)
-
-        left = left.latex(ctx)
-        right = right.latex(ctx)
-
-        if parens_left:
-            left = r'\left( ' + left + r' \right)'
-        if parens_right:
-            right = r'\left( ' + right + r' \right)'
-
-        if is_implicit:
-            return left + ' ' + right
-        else:
-            return '{} {} {}'.format(left, replace_latex_symbols(self.name), right)
 
 class UnaryOperatorDefinition(Definition):
     precedence = 5
     associativity = Associativity.R_TO_L
     token_type = DefinitionType.UNARY_OPERATOR
 
-    def __init__(self, symbol, func, precedence=None, help_text=None):
+    def __init__(self, symbol, func, precedence=None, latex=None, help_text=None):
         """
         Define a unary operator.
 
@@ -403,12 +363,8 @@ class UnaryOperatorDefinition(Definition):
         )
         if precedence is not None:
             self.precedence = precedence
+        self.latex_func = latex
 
-    def fill_latex(self, ctx, right, parens_right):
-        right = right.latex(ctx)
-        if parens_right:
-            right = r'\left(' + right + r'\right)'
-        return replace_latex_symbols(self.name) + right
 
 class vector(list):
     def __init__(self, *v):

@@ -48,6 +48,8 @@ if mpl and plt:
     plt.rc('figure', facecolor='#37393f', figsize=[12, 10], dpi=72)
 
 
+# --- Calc base --- #
+
 def evaluate(ctx:Context, expression:str):
     """ Evaluate an expression """
     expression = re.sub(r'\s+', '', expression)
@@ -136,10 +138,18 @@ def latex(ctx:Context, expression:Union[Definition, str]):
     if isinstance(expression, str):
         expression = re.sub(r'\s+', '', expression)
         expression = parse(ctx, expression)
+
     if isinstance(expression, DeclaredFunction):
-        expression = expression.func
+        expression = Declaration(expression, expression.func)
+    elif isinstance(expression, FunctionDefinition):
+        expression = Function(expression)
+    elif isinstance(expression, VariableDefinition):
+        expression = Variable(expression)
+
     return latex_(ctx, expression)
 
+
+# --- Function implementations --- #
 
 @contextmanager
 def _capture_stdout():
@@ -293,7 +303,6 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
 def latex_(ctx, root):
     return root.latex(ctx)
 
-
 def and_(ctx, a, b):
     return a.evaluate(ctx) and b.evaluate(ctx)
 
@@ -395,6 +404,8 @@ def spherical_to_cartesian(r, theta, phi):
 def spherical_to_cylindrical(r, theta, phi):
     return vector(r*math.sin(phi), theta, r*math.cos(phi))
 
+
+# --- LaTeX --- #
 
 def tex_div(self, ctx, left, right, *_):
     left = left.latex(ctx)

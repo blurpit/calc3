@@ -299,17 +299,22 @@ class BinaryOperator(Node):
     def __str__(self):
         left = self.children[0]
         right = self.children[1]
+        parens_left = self.is_left_parenthesized(left)
+        parens_right = self.is_right_parenthesized(right)
         implicit = ImplicitMultiplication.is_implicit(self, left, right)
 
-        if self.is_left_parenthesized(left):
-            left = '(' + str(left) + ')'
-        if self.is_right_parenthesized(right):
-            right = '(' + str(right) + ')'
+        left = str(left)
+        right = str(right)
+
+        if parens_left:
+            left = '(' + left + ')'
+        if parens_right:
+            right = '(' + right + ')'
 
         if implicit:
-            return str(left) + str(right)
+            return left + right
         else:
-            return str(left) + self.symbol + str(right)
+            return left + self.symbol + right
 
     def __repr__(self):
         left = repr(self.children[0]) if len(self.children) > 0 else '?'
@@ -319,13 +324,30 @@ class BinaryOperator(Node):
     def latex(self, ctx):
         left = self.children[0]
         right = self.children[1]
+        parens_left = self.is_left_parenthesized(left)
+        parens_right = self.is_right_parenthesized(right)
+        implicit = ImplicitMultiplication.is_implicit(self, left, right)
 
         definition = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
-        return definition.fill_latex(
-            ctx, left, right,
-            self.is_left_parenthesized(left), self.is_right_parenthesized(right),
-            ImplicitMultiplication.is_implicit(self, left, right)
-        )
+
+        if definition.latex_func:
+            return definition.latex_func(
+                definition, ctx, left, right,
+                parens_left, parens_right, implicit
+            )
+
+        left = left.latex(ctx)
+        right = right.latex(ctx)
+
+        if parens_left:
+            left = r'\left( ' + left + r' \right)'
+        if parens_right:
+            right = r'\left( ' + right + r' \right)'
+
+        if implicit:
+            return left + ' ' + right
+        else:
+            return '{} {} {}'.format(left, replace_latex_symbols(definition.name), right)
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
@@ -367,8 +389,17 @@ class UnaryOperator(Node):
 
     def latex(self, ctx):
         right = self.children[0]
+        parens_right = self.is_right_parenthesized(right)
+
         definition = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
-        return definition.fill_latex(ctx, right, self.is_right_parenthesized(right))
+
+        if definition.latex_func:
+            return definition.latex_func(self, ctx, right, parens_right)
+
+        right = right.latex(ctx)
+        if parens_right:
+            right = r'\left(' + right + r'\right)'
+        return replace_latex_symbols(definition.name) + right
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
@@ -611,7 +642,24 @@ class Function(Identifier):
 
     def latex(self, ctx):
         definition = ctx.get(self.name)
-        return definition.fill_latex(ctx, *self.children)
+        n_inputs = len(self.children)
+
+        if n_inputs == 0 and len(definition.args) > 0:
+            # No function call
+            return replace_latex_symbols(definition.signature)
+
+        if definition.manual_eval:
+            # add phantom `ctx` input for manual_eval functions
+            n_inputs += 1
+        definition.check_inputs(n_inputs)
+
+        if definition.latex_func:
+            return definition.latex_func(self, ctx, *self.children)
+
+        return r'{}\left( {} \right)'.format(
+            replace_latex_symbols(self.name),
+            ', '.join(node.latex(ctx) for node in self.children)
+        )
 
 
 class Variable(Identifier):
@@ -633,7 +681,8 @@ class Variable(Identifier):
 
     def latex(self, ctx):
         definition = ctx.get(self.name)
-        return definition.fill_latex(ctx)
+        return getattr(definition, 'latex_name', None) \
+            or replace_latex_symbols(definition.display_name or definition.name)
 
 
 class ImplicitMultiplication(Token):
