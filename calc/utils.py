@@ -91,9 +91,10 @@ def console(ctx:Context, show_time=False):
             exp = input(Fore.YELLOW + '>>> ' + Fore.RESET)
             if exp == 'exit':
                 break
-            elif exp == 'reset_ctx':
+            elif exp == 'resetctx':
                 ctx.pop_scope()
                 ctx.push_scope()
+                cprint('Context reset.', Fore.YELLOW)
             elif exp == '!':
                 debug = True
             else:
@@ -104,6 +105,7 @@ def console(ctx:Context, show_time=False):
 
                     if isinstance(result, DeclaredFunction):
                         ctx.add(result)
+                        cprint(f'Added {result.signature} to context.', Fore.YELLOW)
                     elif type(result) == list:
                         result = ', '.join(map(str, result))
                     elif mpl and plt and isinstance(result, plt.Figure):
