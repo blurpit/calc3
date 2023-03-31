@@ -305,7 +305,11 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
     return fig
 
 def latex_(ctx, root):
-    return root.latex(ctx)
+    parent = root.parent  # temporarily remove parent
+    root.parent = None
+    result = root.latex(ctx)
+    root.parent = parent
+    return result
 
 def and_(ctx, a, b):
     return a.evaluate(ctx) and b.evaluate(ctx)
