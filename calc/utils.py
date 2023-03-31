@@ -539,6 +539,8 @@ def tex_transp(self, ctx, m):
     return r'{{{}}}^{{T}}'.format(m.latex(ctx))
 
 
+# --- Context --- #
+
 def create_global_context():
     ctx = Context()
     ctx.add(

@@ -646,7 +646,10 @@ class Function(Identifier):
 
         if n_inputs == 0 and len(definition.args) > 0:
             # No function call
-            return replace_latex_symbols(definition.signature)
+            if isinstance(definition, DeclaredFunction):
+                return Declaration(definition, definition.func).latex(ctx)
+            else:
+                return replace_latex_symbols(definition.signature)
 
         if definition.manual_eval:
             # add phantom `ctx` input for manual_eval functions
