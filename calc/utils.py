@@ -22,7 +22,7 @@ from .definitions import Associativity, DefinitionType, Definition, FunctionDefi
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
 from .parser import parse, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable
 
-__all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_global_context']
+__all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_default_context']
 
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
@@ -590,7 +590,7 @@ def tex_transp(node, ctx, m):
 
 # --- Context --- #
 
-def create_global_context():
+def create_default_context():
     ctx = Context()
     ctx.add(
         # Constants
