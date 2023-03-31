@@ -236,6 +236,8 @@ def tree_(ctx, root):
             if isinstance(definition, DeclaredFunction):
                 root = definition.func
                 msg = 'Declaration ' + str(definition)
+            else:
+                msg = 'Expression ' + str(root)
         else:
             msg = 'Expression ' + str(root)
 
