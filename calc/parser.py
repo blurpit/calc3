@@ -644,11 +644,16 @@ class Function(Identifier):
         definition = ctx.get(self.name)
         n_inputs = len(self.children)
 
-        if n_inputs == 0 and len(definition.args) > 0:
-            # No function call
-            if isinstance(definition, DeclaredFunction):
+        if n_inputs == 0:
+            if isinstance(self.parent, Function):
+                # Function is being passed as an argument to another function.
+                # Use only the name.
+                return replace_latex_symbols(definition.name)
+            elif isinstance(definition, DeclaredFunction):
+                # Use the full declaration.
                 return Declaration(definition, definition.func).latex(ctx)
             else:
+                # Use the function signature
                 return replace_latex_symbols(definition.signature)
 
         if definition.manual_eval:

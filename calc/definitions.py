@@ -146,18 +146,22 @@ class FunctionDefinition(Definition):
         it may be either a callable or a direct value.
 
         `precedence` is used when the function is called implicitly to determine what
-        goes inside the parentheses. Default is 2 (between + and *). Ex. "sin2*pi/3+8"
+        goes inside the parentheses. Default is 3 (between + and *). Ex. "sin2*pi/3+8"
         is parsed as "sin(2*pi/3)+8. Higher number = higher precedence.
 
         Set `display_name` to have the expression show a different name from what was
         inputted when parsed and converted back to a string. Ex. the funcion declaration
         "f(x)=2pix" will be shown as "f(x) = 2πx" when printed.
 
-        `latex` should be a function that that takes self (this FunctionDefinition), a
-        Context, and the inputs of the function (passed as *args) and returns a LaTeX string.
-        This is useful for special functions that should be rendered differently from the
-        standard ``name(a, b, c)`` in latex, integrals for example. Use ``.latex(ctx)`` to
-        convert an input to latex.
+        `latex` should be a function that that takes `node`, `ctx`, and `*inputs`. `node` is
+        the ``Function`` node in the syntax tree representing the function call, and `*inputs`
+        are the inputs to the function call. It should return a LaTeX string. For example, for
+        the expression ``int(sin, 0, 3)``, `node` will be a ``Function`` object where ``node.name``
+        is ``'int'`` (you can get ``int``'s the definition using ``ctx.get(node.name)``), and
+        ``inputs`` will be ``(Number(0), Number(3))``. Use ``inputs[i].latex(ctx)`` to convert an
+        input to latex. Passing a `latex` function is useful for special functions that should be
+        rendered differently from the standard ``name(a, b, c)`` format in latex, integrals for
+        example.
 
         `help_text` will be shown when evaluating ``help([name])``. If none is provided, it
         will use the docstring associated with `func`. If that is also not provided, it will

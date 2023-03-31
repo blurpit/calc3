@@ -409,12 +409,12 @@ def spherical_to_cylindrical(r, theta, phi):
 
 # --- LaTeX --- #
 
-def tex_div(self, ctx, left, right, *_):
+def tex_div(node, ctx, left, right, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
     return r'\frac{{{}}}{{{}}}'.format(left, right)
 
-def tex_mul(self, ctx, left, right, parens_left, parens_right, is_implicit):
+def tex_mul(node, ctx, left, right, parens_left, parens_right, is_implicit):
     left = left.latex(ctx)
     right = right.latex(ctx)
 
@@ -428,26 +428,26 @@ def tex_mul(self, ctx, left, right, parens_left, parens_right, is_implicit):
     else:
         return r'{} \cdot {}'.format(left, right)
 
-def tex_pow(self, ctx, left, right, parens_left, *_):
+def tex_pow(node, ctx, left, right, parens_left, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
     if parens_left:
         left = r'\left( ' + left + r' \right)'
     return r'{}^{{{}}}'.format(left, right)
 
-def tex_abs(self, ctx, x):
+def tex_abs(node, ctx, x):
     x = x.latex(ctx)
     return r'\left| ' + x + r' \right|'
 
-def tex_floor(self, ctx, x):
+def tex_floor(node, ctx, x):
     x = x.latex(ctx)
     return r'\lfloor{' + x + r'}\rfloor'
 
-def tex_ceil(self, ctx, x):
+def tex_ceil(node, ctx, x):
     x = x.latex(ctx)
     return r'\lceil{' + x + r'}\rceil'
 
-def tex_if(self, ctx, condition, if_true, if_false):
+def tex_if(node, ctx, condition, if_true, if_false):
     return r'\begin{{cases}} ' \
            r'{} & \text{{if }} {} \neq 0 \\' \
            r'{} & \text{{otherwise}} ' \
@@ -457,56 +457,99 @@ def tex_if(self, ctx, condition, if_true, if_false):
         if_false.latex(ctx)
     )
 
-def tex_root(self, ctx, x, n=None):
+def tex_root(node, ctx, x, n=None):
     x = x.latex(ctx)
     if n is None:
         return r'\sqrt{' + x + r'}'
     n = n.latex(ctx)
     return r'\sqrt[{}]{{{}}}'.format(n, x)
 
-def tex_log(self, ctx, x, b=None):
+def tex_log(node, ctx, x, b=None):
     if b is None: b = 10
     else: b = b.latex(ctx)
     return r'log_{{{}}}\left( {} \right)'.format(b, x)
 
-def tex_fact(self, ctx, n):
-    if Function(self).is_left_parenthesized(n):
+def tex_fact(node, ctx, n):
+    if node.is_left_parenthesized(n):
         return r'\left({{{}}}\right)!'.format(n.latex(ctx))
     return r'{{{}}}!'.format(n.latex(ctx))
 
-def tex_choose(self, ctx, n, k):
+def tex_choose(node, ctx, n, k):
     return '{{{}}}\choose{{{}}}'.format(n.latex(ctx), k.latex(ctx))
 
-def tex_integral(self, ctx, f, a, b):
+def tex_integral(node, ctx, f, a, b):
     with ctx.with_scope():
         if isinstance(f, Declaration):
             definition = f.definition
         elif isinstance(f, Function):
             definition = ctx.get(f.name)
         else:
-            raise TypeError('Integrand must be a function')
+            raise TypeError('Integrand input must be a function')
 
-        if len(definition.args) < 1:
-            raise TypeError('Integrand must take at least 1 argument')
+        if len(definition.args) != 1:
+            raise TypeError('Integrand must take 1 argument')
 
-        differential = replace_latex_symbols(definition.args[0])
+        differential = definition.args[0]
         definition.add_args_to_context(ctx, None)
 
-        if isinstance(definition, DeclaredFunction):
-            body = definition.func.latex(ctx)
+        if isinstance(f, Declaration):
+            body = f.root.latex(ctx)
         else:
-            inputs = (Variable(ctx.get(arg)) for arg in definition.args)
-            body = definition.fill_latex(ctx, *inputs)
+            # build a function call
+            body = Function(definition)
+            body.add_child(Variable(ctx.get(differential)))
+            body = body.latex(ctx)
 
-        return r'\int_{{{}}}^{{{}}} {{{}}} \, d{}'.format(a.latex(ctx), b.latex(ctx), body, differential)
+        return r'\int_{{{}}}^{{{}}} {{{}}} \, d{}'.format(
+            a.latex(ctx), b.latex(ctx),
+            body, replace_latex_symbols(differential)
+        )
 
-def tex_deriv(self, ctx):
-    pass
+def tex_deriv(node, ctx, f, x, n=_undefined):
+    with ctx.with_scope():
+        if isinstance(f, Declaration):
+            definition = f.definition
+        elif isinstance(f, Function):
+            definition = ctx.get(f.name)
+        else:
+            raise TypeError('Derivative input must be a function')
 
-def tex_vec(self, ctx, *args):
+        if len(definition.args) != 1:
+            raise TypeError('Derivative function must take 1 argument')
+
+        differential = definition.args[0]
+        definition.add_args_to_context(ctx, None)
+
+        if isinstance(f, Declaration):
+            body = f.root.latex(ctx)
+            parens_right = node.is_right_parenthesized(f.root)
+        else:
+            # build a function call
+            body = Function(definition)
+            body.add_child(Variable(ctx.get(differential)))
+            body = body.latex(ctx)
+            parens_right = node.is_right_parenthesized(f)
+
+        differential = replace_latex_symbols(differential)
+        if parens_right:
+            body = r'\left( ' + body + r' \right)'
+
+        if n is _undefined:
+            frac = r'\frac{{d}}{{d{}}} \Bigr|_{{{} = {}}}'.format(
+                differential, differential, x.latex(ctx)
+            )
+        else:
+            n = n.latex(ctx)
+            frac = r'\frac{{d^{{{}}}}}{{d{}^{{{}}}}} \Bigr|_{{{} = {}}}'.format(
+                n, differential, n, differential, x.latex(ctx)
+            )
+
+        return r'{} {{{}}}'.format(frac, body)
+
+def tex_vec(node, ctx, *args):
     return vector(*args).latex(ctx)
 
-def tex_mat(self, ctx, *args):
+def tex_mat(node, ctx, *args):
     def get_column(arg):
         """ Turns a passed argument (Node object) into a column vector. """
         if isinstance(arg, ListNode):
@@ -526,16 +569,16 @@ def tex_mat(self, ctx, *args):
     columns = (get_column(arg) for arg in args)
     return matrix(*columns).latex(ctx)
 
-def tex_dot(self, ctx, v, w):
+def tex_dot(node, ctx, v, w):
     return r'{} \cdot {}'.format(v.latex(ctx), w.latex(ctx))
 
-def tex_mag(self, ctx, v):
+def tex_mag(node, ctx, v):
     return r'\left\| {} \right\|'.format(v.latex(ctx))
 
-def tex_mag2(self, ctx, v):
+def tex_mag2(node, ctx, v):
     return r'{{\left\| {} \right\|}}^{{2}}'.format(v.latex(ctx))
 
-def tex_transp(self, ctx, m):
+def tex_transp(node, ctx, m):
     return r'{{{}}}^{{T}}'.format(m.latex(ctx))
 
 
