@@ -85,7 +85,6 @@ def console(ctx:Context, show_time=False):
     def errprint(exc):
         cprint('{}: {}'.format(type(exc).__name__, str(exc)), Fore.RED)
 
-    debug = False
     with ctx.with_scope():
         while True:
             exp = input(Fore.YELLOW + '>>> ' + Fore.RESET)
@@ -95,8 +94,6 @@ def console(ctx:Context, show_time=False):
                 ctx.pop_scope()
                 ctx.push_scope()
                 cprint('Context reset.', Fore.YELLOW)
-            elif exp == '!':
-                debug = True
             else:
                 try:
                     t = time.time()
