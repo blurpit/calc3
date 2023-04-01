@@ -113,6 +113,7 @@ def console(ctx:Context, show_time=False):
     with ctx.with_scope():
         while True:
             exp = input(Fore.YELLOW + '>>> ' + Fore.RESET)
+
             if exp == 'exit':
                 break
             elif exp == 'ctx':
@@ -138,6 +139,8 @@ def console(ctx:Context, show_time=False):
                         cprint('{:.5f}ms'.format(t*1000), Style.DIM)
                 except Exception as e:
                     errprint(e)
+                except KeyboardInterrupt:
+                    pass
             print()
 
 def graph(ctx:Context, func:Union[Definition, str], xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
