@@ -943,8 +943,8 @@ class Declaration(Node):
         return '{}({})'.format(type(self).__name__, self.definition.signature)
 
     def add_to_tree(self, tree, num):
-        print('Declaration', str(self.definition))
         tree2 = type(tree)() # make a new tree
         self.root.add_to_tree(tree2, 0)
+        print('Declaration', str(self.definition))
         tree2.show()
         super().add_to_tree(tree, num)
