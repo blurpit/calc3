@@ -406,6 +406,9 @@ class vector(list):
 
     __rmul__ = __mul__
 
+    def __neg__(self):
+        return self * -1
+
     def __truediv__(self, other):
         if isinstance(other, (int, float)):
             v = vector()
@@ -516,6 +519,9 @@ class matrix(list):
             return self.__mul__(other)
         raise TypeError("unsupported operand type(s) for *: '{}' and '{}'"
                         .format(type(other).__name__, type(self).__name__))
+
+    def __neg__(self):
+        return self * -1
 
     def copy(self):
         return matrix(*(col.copy() for col in self))
