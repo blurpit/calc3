@@ -451,12 +451,21 @@ def tex_ceil(node, ctx, x):
     return r'\lceil{' + x + r'}\rceil'
 
 def tex_if(node, ctx, condition, if_true, if_false):
+    if isinstance(condition, UnaryOperator) and condition.symbol == '!':
+        # Condition is negated, remove double negative.
+        # Ex. x = 0 instead of !x != 0
+        condition = condition.children[0]
+        comparator = r'='
+    else:
+        comparator = r'\neq'
+
     return r'\begin{{cases}} ' \
-           r'{} & \text{{if }} {} \neq 0 \\' \
+           r'{} & \text{{if }} {} {} 0 \\' \
            r'{} & \text{{otherwise}} ' \
            r'\end{{cases}}'.format(
         if_true.latex(ctx),
         condition.latex(ctx),
+        comparator,
         if_false.latex(ctx)
     )
 
