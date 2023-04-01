@@ -62,15 +62,41 @@ def evaluate(ctx:Context, expression:str):
     ctx.ans = answer
     return answer
 
-def tree(ctx:Context, expression:str):
+def tree(ctx:Context, expression:Union[Definition, str]):
     """ Parse an expression and print the syntax tree structure. """
     import treelib
-    expression = re.sub(r'\s+', '', expression)
-    root = parse(ctx, expression)
+
+    if isinstance(expression, str):
+        expression = re.sub(r'\s+', '', expression)
+        root = parse(ctx, expression)
+        if len(root.children) == 1:
+            # Remove singleton ListNodes
+            root = root.children[0]
+    else:
+        root = expression
+
+    if isinstance(root, DeclaredFunction):
+        root = root.func
+        msg = 'Declaration ' + str(root)
+    elif isinstance(root, Function) and len(root.children) == 0:
+        # Function reference
+        definition = ctx.get(root.name)
+        if isinstance(definition, DeclaredFunction):
+            # DeclaredFunction reference
+            root = definition.func
+            msg = 'Declaration ' + str(definition)
+        else:
+            # Some other function
+            msg = 'Expression ' + str(root)
+    else:
+        msg = 'Expression ' + str(root)
 
     t = treelib.Tree()
+    parent = root.parent # temporarily remove parent
+    root.parent = None
     root.add_to_tree(t, 0)
-    print('Expression', str(root))
+    root.parent = parent
+    print(msg)
     t.show()
 
 def console(ctx:Context, show_time=False):
@@ -220,28 +246,8 @@ def help_(ctx, obj):
 
 def tree_(ctx, root):
     """ Tree function for use in a function definition. Use calc.tree() in regular code. """
-    import treelib
-
     with _capture_stdout() as output:
-        t = treelib.Tree()
-
-        if isinstance(root, Function) and len(root.children) == 0:
-            definition = ctx.get(root.name)
-            if isinstance(definition, DeclaredFunction):
-                root = definition.func
-                msg = 'Declaration ' + str(definition)
-            else:
-                msg = 'Expression ' + str(root)
-        else:
-            msg = 'Expression ' + str(root)
-
-        parent = root.parent  # temporarily remove parent
-        root.parent = None
-        root.add_to_tree(t, 0)
-        root.parent = parent
-
-        print(msg)
-        t.show()
+        tree(ctx, root)
 
     output.seek(0)
     return output.read().strip()
