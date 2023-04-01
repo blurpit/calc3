@@ -470,17 +470,17 @@ class vector(list):
         return r'\begin{bmatrix} ' + vec + r' \end{bmatrix}'
 
 class matrix(list):
-    def __init__(self, *cols):
-        for col in cols:
-            if not isinstance(col, list):
-                raise TypeError("matrix column must be a list or vector, not '{}'".format(type(col).__name__))
-            if len(col) != len(cols[0]):
+    def __init__(self, *rows):
+        for row in rows:
+            if not isinstance(row, list):
+                raise TypeError("matrix row must be a list or vector, not '{}'".format(type(row).__name__))
+            if len(row) != len(rows[0]):
                 raise ValueError('matrix must be rectangular')
-        self.shape = [len(cols[0]), len(cols)]
+        self.shape = [len(rows), len(rows[0])]
 
         super().__init__()
-        for col in cols:
-            self.append(vector(*col))
+        for row in rows:
+            self.append(vector(*row))
 
     def __mul__(self, other):
         if isinstance(other, (int, float)):
@@ -498,16 +498,16 @@ class matrix(list):
                 for r in range(self.shape[0]):
                     for c in range(other.shape[1]):
                         for k in range(self.shape[1]):
-                            m[c][r] += self[k][r] * other[c][k]
+                            m[r][c] += self[r][k] * other[k][c]
                 return m
             raise ValueError('incompatible shapes for matrix multiplication')
 
         elif isinstance(other, vector):
             if len(other) == self.shape[1]:
                 v = vector.zero(len(other))
-                for c, column in enumerate(self):
-                    for r in range(len(other)):
-                        v[r] += other[r] * column[r]
+                for c in range(self.shape[1]):
+                    for r in range(self.shape[0]):
+                        v[r] += other[r] * self[r][c]
                 return v
             raise ValueError('incompatible shapes for matrix-vector multiplication')
 
@@ -524,26 +524,26 @@ class matrix(list):
         return self * -1
 
     def copy(self):
-        return matrix(*(col.copy() for col in self))
+        return matrix(*(row.copy() for row in self))
 
     def transp(self):
         """ Returns the transpose of the matrix """
-        return matrix(*(self.row(r) for r in range(self.shape[0])))
+        return matrix(*(self.col(c) for c in range(self.shape[1])))
 
     def row(self, r):
         """ Returns the rth row vector of the matrix """
-        return vector(*(
-            self.pos(r, c)
-            for c in range(self.shape[1])
-        ))
+        return self[r]
 
     def col(self, c):
         """ Returns the cth column vector of the matrix """
-        return self[c]
+        return vector(*(
+            self[r][c]
+            for r in range(self.shape[0])
+        ))
 
     def pos(self, r, c):
         """ Returns the value at row r and column c """
-        return self[c][r]
+        return self[r][c]
 
     @staticmethod
     def id(n):
@@ -565,9 +565,9 @@ class matrix(list):
         body = r' \\ '.join(
             r' & '.join(
                 x.latex(ctx) if hasattr(x, 'latex') else str(x)
-                for x in column
+                for x in row
             )
-            for column in self.transp()
+            for row in self
         )
         return r'\begin{bmatrix} ' + body + r' \end{bmatrix}'
 

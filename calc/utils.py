@@ -709,7 +709,7 @@ def create_default_context():
         FunctionDefinition('mag2',   'v',       vector.mag2,   latex=tex_mag2,   help_text="Vector magnitude squared"),
         FunctionDefinition('norm',   'v',       vector.norm,                     help_text="Normalizes `v`"),
         FunctionDefinition('zero',   'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
-        FunctionDefinition('mat',    ['*cols'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a list of column vectors"),
+        FunctionDefinition('mat',    ['*rows'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a list of row vectors"),
         FunctionDefinition('I',      'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
         FunctionDefinition('shape',  'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
         FunctionDefinition('mrow',   'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
