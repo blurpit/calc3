@@ -26,11 +26,10 @@ __all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_default_cont
 
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
-_undefined = type('undefined', (), {
-    '__str__': lambda _: 'undefined',
-    '__repr__': lambda _: 'undefined'
-})()
-
+class undefined:
+    def __str__(self): return 'undefined'
+    def __repr__(self): return 'undefined'
+_undefined = undefined()
 
 # Setup pyplot style
 if mpl and plt:
@@ -90,10 +89,8 @@ def console(ctx:Context, show_time=False):
             exp = input(Fore.YELLOW + '>>> ' + Fore.RESET)
             if exp == 'exit':
                 break
-            elif exp == 'resetctx':
-                ctx.pop_scope()
-                ctx.push_scope()
-                cprint('Context reset.', Fore.YELLOW)
+            elif exp == 'ctx':
+                print(ctx)
             else:
                 try:
                     t = time.time()

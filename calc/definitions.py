@@ -343,6 +343,10 @@ class BinaryOperatorDefinition(Definition):
         self.associativity = associativity
         self.latex_func = latex
 
+    def __str__(self):
+        name = self.display_name or self.name
+        return 'a ' + name + ' b'
+
 
 class UnaryOperatorDefinition(Definition):
     precedence = 5
@@ -368,6 +372,9 @@ class UnaryOperatorDefinition(Definition):
         if precedence is not None:
             self.precedence = precedence
         self.latex_func = latex
+
+    def __str__(self):
+        return self.name + 'x'
 
 
 class vector(list):

@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 
 from .definitions import DefinitionType, Definition, DeclaredFunction
+import json
+import pickle
 
 
 class ContextError(Exception):
@@ -87,11 +89,45 @@ class Context:
         finally:
             self.pop_scope()
 
+    def save(self, filename):
+        """ Save the context (excluding the global scope) to a file """
+        ctx = []
+        for scope in self.stack[1:]:
+            items = []
+            for definition in scope.values():
+                if isinstance(definition, DeclaredFunction):
+                    # Unbind the context because it cannot be pickled
+                    definition.bind_context(None)
+                    items.append(definition)
+            if items:
+                ctx.append(items)
+
+        # Write to the file
+        with open(filename, 'wb') as file:
+            pickle.dump(ctx, file)
+
+        # Re-bind declared functions context
+        for items in ctx:
+            for definition in items:
+                definition.bind_context(self)
+
+    def load(self, filename):
+        """ Load a context from a file created using ``ctx.save()`` """
+        with open(filename, 'rb') as file:
+            ctx = pickle.load(file)
+
+        for scope in ctx:
+            self.push_scope()
+            for definition in scope:
+                self.add(definition)
+
     def __len__(self):
         return len(self.stack)
 
     def __str__(self):
-        s = 'ctx('
-        for i, ctx in enumerate(self.stack):
-            s += '\n\t' + str(i) + ': ' + ' '.join(ctx.keys())
-        return s + '\n)'
+        s = 'Context(\n'
+        for i, ctx in enumerate(self.stack[1:], 1):
+            for item in ctx.values():
+                s += '\t'*i + str(item) + '\n'
+        s += ')'
+        return s
