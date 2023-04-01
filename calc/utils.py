@@ -332,7 +332,7 @@ def csc(x):
 def cot(x):
     return 1 / math.tan(x)
 
-def binomial(n, x, p):
+def binomial(p, x, n):
     return math.comb(n, x) * pow(p, x) * pow(1-p, n-x)
 
 def fibonacci(n):
@@ -599,7 +599,7 @@ def create_default_context():
         VariableDefinition('∞',    math.inf,      help_text="Infinity"),
         VariableDefinition('inf',  math.inf, '∞', help_text="Infinity"),
         VariableDefinition('j',    1j,            help_text="Imaginary unit, sqrt(-1)"),
-        VariableDefinition('_',    _undefined,    help_text="Undefined value (should only be used to leave certain function arguments blank)"),
+        VariableDefinition('_',    _undefined,    help_text="Undefined value (Can be used to leave certain function arguments as their defaults)"),
 
         # Binary Operators
         BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R,                help_text="Concatenation operator"),
@@ -626,13 +626,13 @@ def create_default_context():
         FunctionDefinition('ans',   '',  lambda: ctx.ans,                  help_text="Answer to the previously evaluated expression"),
 
         # Informational Functions
-        FunctionDefinition('type',  ['obj'],          type_,  help_text="Gets the type of `obj`"),
+        FunctionDefinition('type',  ['obj'],          type_,  help_text="Returns the type of `obj`"),
         FunctionDefinition('help',  ['obj'],          help_,  help_text="Provides a description for the given identifier", manual_eval=True),
         FunctionDefinition('tree',  ['expr'],         tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True),
         FunctionDefinition('graph', ['f()', '*args'], graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
         FunctionDefinition('latex', ['expr'],         latex_, help_text="Converts an expression into LaTeX code", manual_eval=True),
 
-        # Logic & Data structure functions
+        # Logic & Data Structure Functions
         FunctionDefinition('sum',    ['*x'], sum_,                                     help_text="Sum of `x`"),
         FunctionDefinition('len',    ['*x'], len_,                                     help_text="Length of `x`"),
         FunctionDefinition('filter', ['f()', '*x'], filter_,                           help_text="Filters `x` for elements where `f(x)` is nonzero"),
@@ -665,7 +665,7 @@ def create_default_context():
         FunctionDefinition('tanh', 'x', math.tanh, help_text="Hyperbolic tangent of `x`"),
 
         # Exponential & Logarithmic Functions
-        FunctionDefinition('exp',   'x',  math.exp,                  help_text="Equal to `e^x`"),
+        FunctionDefinition('exp',   'x',  math.exp,                  help_text="Equivalent to `e^x`"),
         FunctionDefinition('ln',    'x',  math.log,                  help_text="Natural logarithm of `x`"),
         FunctionDefinition('log10', 'x',  math.log10, latex=tex_log, help_text="Base 10 logarithm of `x`"),
         FunctionDefinition('log',   'xb', math.log,   latex=tex_log, help_text="Base `b` logarithm of `x`"),
@@ -674,10 +674,10 @@ def create_default_context():
         FunctionDefinition('fact',   'n',   math.factorial, 7, latex=tex_fact,   help_text="Factorial of `n`"),
         FunctionDefinition('perm',   'nk',  math.perm,                           help_text="Number of ways to choose `k` items from `n` items without repetition and with order"),
         FunctionDefinition('choose', 'nk',  math.comb,         latex=tex_choose, help_text="Number of ways to choose `k` items from `n` items without repetition and without order"),
-        FunctionDefinition('binom',  'nxp', binomial,                            help_text="Probability of an event with probability `p` happening exactly `x` times in `n` trials"),
+        FunctionDefinition('binom',  'pxn', binomial,                            help_text="Probability of an event with probability `p` happening exactly `x` times in `n` trials"),
         FunctionDefinition('fib',    'n',   fibonacci,                           help_text="`n`th fibonacci number"),
-        FunctionDefinition('rand',   '',    random,                              help_text="Random real number between 0 and 1"),
-        FunctionDefinition('randr',  'ab',  randrange,                           help_text="Random real number between `a` and `b`"),
+        FunctionDefinition('rand',   '',    random,                              help_text="Random number between 0 and 1"),
+        FunctionDefinition('randr',  'ab',  randrange,                           help_text="Random number between `a` and `b`"),
 
         # Calculus
         FunctionDefinition('int',    ['f()', 'a', 'b'], integrate,     latex=tex_integral, help_text="Definite integral of `f(x)dx` from `a` to `b`"),
@@ -691,7 +691,7 @@ def create_default_context():
         FunctionDefinition('mag2',   'v',       vector.mag2,   latex=tex_mag2,   help_text="Vector magnitude squared"),
         FunctionDefinition('norm',   'v',       vector.norm,                     help_text="Normalizes `v`"),
         FunctionDefinition('zero',   'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
-        FunctionDefinition('mat',    ['*cols'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a set of column vectors"),
+        FunctionDefinition('mat',    ['*cols'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a list of column vectors"),
         FunctionDefinition('I',      'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
         FunctionDefinition('shape',  'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
         FunctionDefinition('mrow',   'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
@@ -713,14 +713,14 @@ def create_default_context():
         # FunctionDefinition('svd', 'M', svd),
 
         # Coordinate System Conversion Functions
-        FunctionDefinition('polar',  'xy',  cartesian_to_polar,       help_text="Convert 2D cartesian coordinates to 2D polar coordinates"),
-        FunctionDefinition('cart',   'rθ',  polar_to_cartesian,       help_text="Convert 2D polar coordinates to 2D cartesian coordinates"),
-        FunctionDefinition('crtcyl', 'xyz', cartesian_to_cylindrical, help_text="Convert cartesian coordinates to cylindrical coordinates"),
-        FunctionDefinition('crtsph', 'xyz', cartesian_to_spherical,   help_text="Convert cartesian coordinates to spherical coordinates"),
-        FunctionDefinition('cylcrt', 'ρϕz', cylindrical_to_cartesian, help_text="Convert cylindrical coordinates to cartesian coordinates"),
-        FunctionDefinition('cylsph', 'ρϕz', cylindrical_to_spherical, help_text="Convert cylindrical coordinates to spherical coordinates"),
-        FunctionDefinition('sphcrt', 'rθϕ', spherical_to_cartesian,   help_text="Convert spherical coordinates to cartesian coordinates"),
-        FunctionDefinition('sphcyl', 'rθϕ', spherical_to_cylindrical, help_text="Convert spherical coordinates to cylindrical coordinates"),
+        FunctionDefinition('polar',  'xy',  cartesian_to_polar,       help_text="Converts 2D cartesian coordinates to 2D polar coordinates"),
+        FunctionDefinition('cart',   'rθ',  polar_to_cartesian,       help_text="Converts 2D polar coordinates to 2D cartesian coordinates"),
+        FunctionDefinition('crtcyl', 'xyz', cartesian_to_cylindrical, help_text="Converts cartesian coordinates to cylindrical coordinates"),
+        FunctionDefinition('crtsph', 'xyz', cartesian_to_spherical,   help_text="Converts cartesian coordinates to spherical coordinates"),
+        FunctionDefinition('cylcrt', 'ρϕz', cylindrical_to_cartesian, help_text="Converts cylindrical coordinates to cartesian coordinates"),
+        FunctionDefinition('cylsph', 'ρϕz', cylindrical_to_spherical, help_text="Converts cylindrical coordinates to spherical coordinates"),
+        FunctionDefinition('sphcrt', 'rθϕ', spherical_to_cartesian,   help_text="Converts spherical coordinates to cartesian coordinates"),
+        FunctionDefinition('sphcyl', 'rθϕ', spherical_to_cylindrical, help_text="Converts spherical coordinates to cylindrical coordinates"),
 
         override_global=True
     )
