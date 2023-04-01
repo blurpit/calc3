@@ -617,7 +617,6 @@ def create_default_context():
         UnaryOperatorDefinition('!', not_,         help_text="Logical NOT operator"),
 
         # Basic Functions
-        FunctionDefinition('neg',   'x', operator.neg,                     help_text="Negates `x`"),
         FunctionDefinition('abs',   'x', abs,             latex=tex_abs,   help_text="Absolute value of `x`"),
         FunctionDefinition('rad',   'θ', math.radians,                     help_text="Converts `θ` in degrees to radians"),
         FunctionDefinition('deg',   'θ', math.degrees,                     help_text="Converts `θ` in radians to degrees"),
