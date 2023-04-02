@@ -8,7 +8,7 @@ from random import random
 from typing import Union
 
 import numpy as np
-import scipy
+import scipy as sp
 
 try:
     import matplotlib as mpl
@@ -388,10 +388,34 @@ def shape(M):
         return [1, 1]
 
 def integrate(f, a, b):
-    return scipy.integrate.quad(f, a, b)[0]
+    return sp.integrate.quad(f, a, b)[0]
 
 def differentiate(f, x, n=1):
-    return scipy.misc.derivative(f, x, dx=1e-4, n=n)
+    return sp.misc.derivative(f, x, dx=1e-4, n=n)
+
+def det(m):
+    return np.linalg.det(m)
+
+def rank(m):
+    return np.linalg.matrix_rank(m)
+
+def nullsp(m):
+    return matrix.from_numpy(sp.linalg.null_space(m))
+
+def rref(m):
+    raise NotImplementedError('coming soon to a calculator near you')
+
+def lu(m):
+    return list(sp.linalg.lu(m))
+
+def svd(m):
+    u, s, vh = np.linalg.svd(m)
+    u = matrix.from_numpy(u)
+    vh = matrix.from_numpy(vh)
+    sigma = matrix.zero(*m.shape)
+    for i, x in enumerate(s):
+        sigma[i][i] = x
+    return [u, sigma, vh]
 
 def cartesian_to_polar(x, y):
     return vector(hypot(x, y), math.atan2(y, x))
@@ -719,16 +743,12 @@ def create_default_context():
         FunctionDefinition('vi',     'vi',      vector.i,                        help_text="Value at index `i` of `v`"),
 
         # Linear Algebra
-        # FunctionDefinition('det', 'M', determinant),
-        # FunctionDefinition('rank', 'M', rank),
-        # FunctionDefinition('inv', 'M', invert),
-        # FunctionDefinition('kernel', 'M', kernel),
-        # FunctionDefinition('ech', 'M', echelon),
-        # FunctionDefinition('isech', 'M', is_echelon),
-        # FunctionDefinition('rref', 'M', rref),
-        # FunctionDefinition('isrref', 'M', is_rref),
-        # FunctionDefinition('lu', 'M', lu),
-        # FunctionDefinition('svd', 'M', svd),
+        FunctionDefinition('det',    'M', det,    help_text="Determinant of `M`"),
+        FunctionDefinition('rank',   'M', rank,   help_text="Rank of `M`"),
+        FunctionDefinition('nullsp', 'M', nullsp, help_text="Returns a matrix whose columns form a basis for the null space of `M`"),
+        FunctionDefinition('rref',   'M', rref,   help_text="Converts matrix `M` into row-reduced echelon form"),
+        FunctionDefinition('lu',     'M', lu,     help_text="Performs an LU decomposition on matrix `M`, returns (L, U)"),
+        FunctionDefinition('svd',    'M', svd,    help_text="Performs an SVD decomposition on matrix `M`, returns (U, Σ, V^T)"),
 
         # Coordinate System Conversion Functions
         FunctionDefinition('polar',  'xy',  cartesian_to_polar,       help_text="Converts 2D cartesian coordinates to 2D polar coordinates"),

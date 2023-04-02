@@ -2,6 +2,9 @@ import math
 from copy import copy
 from enum import Enum
 
+from scipy import linalg
+from scipy.linalg import LinAlgError
+
 
 def is_identifier(name:str):
     return name.isidentifier()
@@ -391,7 +394,7 @@ class vector(list):
                 for a, b in zip(self, other):
                     v.append(a + b)
                 return v
-            raise ValueError('vectors must be the same dimension')
+            raise LinAlgError('vectors must be the same dimension')
         raise TypeError("unsupported operand type(s) for +: '{}' and '{}'"
                         .format(type(self).__name__, type(other).__name__))
 
@@ -423,7 +426,7 @@ class vector(list):
         if isinstance(self, vector) and isinstance(v, vector):
             if len(self) == len(v):
                 return sum(self[i] * v[i] for i in range(len(self)))
-            raise ValueError('vectors must be the same dimension')
+            raise LinAlgError('vectors must be the same dimension')
         raise TypeError('v and w must be vectors')
 
     @staticmethod
@@ -476,32 +479,36 @@ class matrix(list):
                 raise TypeError("matrix row must be a list or vector, not '{}'".format(type(row).__name__))
             if len(row) != len(rows[0]):
                 raise ValueError('matrix must be rectangular')
-        self.shape = [len(rows), len(rows[0])]
+
+        self.shape = [
+            len(rows),
+            len(rows[0]) if len(rows) > 0 else 0
+        ]
 
         super().__init__()
         for row in rows:
             self.append(vector(*row))
 
     def __mul__(self, other):
+        # matrix-scalar multiplication
         if isinstance(other, (int, float)):
             return matrix(*(
                 other * column
                 for column in self
             ))
 
+        # matrix-matrix multiplication
         elif isinstance(other, matrix):
             if self.shape[1] == other.shape[0]:
-                m = matrix(*(
-                    vector.zero(self.shape[0])
-                    for _ in range(other.shape[1])
-                ))
+                m = matrix.zero(self.shape[0], other.shape[1])
                 for r in range(self.shape[0]):
                     for c in range(other.shape[1]):
                         for k in range(self.shape[1]):
                             m[r][c] += self[r][k] * other[k][c]
                 return m
-            raise ValueError('incompatible shapes for matrix multiplication')
+            raise LinAlgError('incompatible shapes for matrix multiplication')
 
+        # matrix-vector multiplication
         elif isinstance(other, vector):
             if len(other) == self.shape[1]:
                 v = vector.zero(len(other))
@@ -509,7 +516,7 @@ class matrix(list):
                     for r in range(self.shape[0]):
                         v[r] += other[r] * self[r][c]
                 return v
-            raise ValueError('incompatible shapes for matrix-vector multiplication')
+            raise LinAlgError('incompatible shapes for matrix-vector multiplication')
 
         raise TypeError("unsupported operand type(s) for *: '{}' and '{}'"
                         .format(type(self).__name__, type(other).__name__))
@@ -519,6 +526,24 @@ class matrix(list):
             return self.__mul__(other)
         raise TypeError("unsupported operand type(s) for *: '{}' and '{}'"
                         .format(type(other).__name__, type(self).__name__))
+
+    def __pow__(self, power, modulo=None):
+        if isinstance(power, int):
+            if self.shape[0] == self.shape[1]:
+                if power == -1:
+                    arr = linalg.inv(self)
+                    return matrix.from_numpy(arr)
+                elif power == 0:
+                    return matrix.id(self.shape[0])
+                elif power > 0:
+                    m = self
+                    for _ in range(power-1):
+                        m = m * self
+                    return m
+                raise LinAlgError('matrix power must be -1 or greater')
+            raise LinAlgError('matrix must be square')
+        raise TypeError("unsupported operand type(s) for ** or pow(): '{}' and '{}'"
+                        .format(type(self).__name__, type(power).__name__))
 
     def __neg__(self):
         return self * -1
@@ -546,14 +571,32 @@ class matrix(list):
         return self[r][c]
 
     @staticmethod
+    def zero(rows, cols):
+        return matrix(*(
+            vector(*(0 for _ in range(cols)))
+            for _ in range(rows)
+        ))
+
+    @staticmethod
     def id(n):
         """ Returns an n by n identity matrix """
         if n > 0:
-            return matrix(*(
-                vector(*(1 if c == r else 0 for c in range(n)))
-                for r in range(n)
-            ))
+            m = matrix.zero(n, n)
+            for i in range(n):
+                m[i][i] = 1
+            return m
         raise ValueError('n must be at least 1')
+
+    @staticmethod
+    def from_numpy(arr):
+        """ Convert a 2d np.ndarray to matrix """
+        if arr.ndim != 2:
+            raise LinAlgError('incompatible shape for matrix')
+        m = matrix.zero(*arr.shape)
+        for r in range(arr.shape[0]):
+            for c in range(arr.shape[1]):
+                m[r][c] = arr[r][c]
+        return m
 
     def __str__(self):
         return '[{}]'.format(', '.join(map(str, self)))
