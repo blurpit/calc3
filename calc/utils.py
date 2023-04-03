@@ -29,6 +29,7 @@ _sqrt5 = math.sqrt(5)
 class undefined:
     def __str__(self): return 'undefined'
     def __repr__(self): return 'undefined'
+    def __bool__(self): return False
 _undefined = undefined()
 
 # Setup pyplot style
@@ -307,7 +308,14 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
     ax.plot(x, y, color='#ed4245')
     return fig
 
-def latex_(ctx, root):
+def latex_(ctx, root, do_eval=None):
+    if do_eval and do_eval.evaluate(ctx):
+        result = root.evaluate(ctx)
+        if hasattr(result, 'latex'):
+            return result.latex(ctx)
+        else:
+            return replace_latex_symbols(str(result))
+
     parent = root.parent  # temporarily remove parent
     root.parent = None
     result = root.latex(ctx)
@@ -668,11 +676,11 @@ def create_default_context():
         FunctionDefinition('ans',   '',  lambda: ctx.ans,                  help_text="Answer to the previously evaluated expression"),
 
         # Informational Functions
-        FunctionDefinition('type',  ['obj'],          type_,  help_text="Returns the type of `obj`"),
-        FunctionDefinition('help',  ['obj'],          help_,  help_text="Provides a description for the given identifier", manual_eval=True),
-        FunctionDefinition('tree',  ['expr'],         tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True),
-        FunctionDefinition('graph', ['f()', '*args'], graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
-        FunctionDefinition('latex', ['expr'],         latex_, help_text="Converts an expression into LaTeX code", manual_eval=True),
+        FunctionDefinition('type',  ['obj'],           type_,  help_text="Returns the type of `obj`"),
+        FunctionDefinition('help',  ['obj'],           help_,  help_text="Provides a description for the given identifier", manual_eval=True),
+        FunctionDefinition('tree',  ['expr'],          tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True),
+        FunctionDefinition('graph', ['f()', '*args'],  graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
+        FunctionDefinition('latex', ['expr', '*eval'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 as a 2nd argument to evaluate before converting to LaTeX.", manual_eval=True),
 
         # Logic & Data Structure Functions
         FunctionDefinition('sum',    ['*x'], sum_,                                     help_text="Sum of `x`"),
