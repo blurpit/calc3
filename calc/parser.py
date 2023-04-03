@@ -689,8 +689,18 @@ class Variable(Identifier):
 
     def latex(self, ctx):
         definition = ctx.get(self.name)
-        return getattr(definition, 'latex_name', None) \
-            or replace_latex_symbols(definition.display_name or definition.name)
+
+        if getattr(definition, 'latex_name', None):
+            name = definition.latex_name
+        else:
+            name = replace_latex_symbols(definition.display_name or definition.name)
+
+        if self.parent is None:
+            if hasattr(definition.func, 'latex'):
+                # Direct variable reference passed, use full declaration
+                return '{} = {}'.format(name, definition.func.latex(ctx))
+
+        return name
 
 
 class ImplicitMultiplication(Token):
