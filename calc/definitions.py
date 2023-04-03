@@ -459,6 +459,12 @@ class vector(list):
         """ Returns the value in the ith row in the vector """
         return self[r]
 
+    def round(self, places):
+        """ Round all elements of this vector to `places` """
+        for i, x in enumerate(self):
+            self[i] = round(x, places)
+        return self
+
     def __str__(self):
         return '<{}>'.format(', '.join(map(str, self)))
 
@@ -597,6 +603,12 @@ class matrix(list):
             for c in range(arr.shape[1]):
                 m[r][c] = arr[r][c]
         return m
+
+    def round(self, places):
+        """ Round all elements of this matrix to `places` """
+        for row in self:
+            row.round(places)
+        return self
 
     def __str__(self):
         return '[{}]'.format(', '.join(map(str, self)))

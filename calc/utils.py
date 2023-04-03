@@ -60,6 +60,7 @@ def evaluate(ctx:Context, expression:str):
         # Evaluate and cache constant values asap
         answer()
 
+    answer = ctx.round_result(answer)
     ctx.ans = answer
     return answer
 
@@ -311,6 +312,7 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
 def latex_(ctx, root, do_eval=None):
     if do_eval and do_eval.evaluate(ctx):
         result = root.evaluate(ctx)
+        result = ctx.round_result(result)
         if hasattr(result, 'latex'):
             return result.latex(ctx)
         else:

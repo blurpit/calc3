@@ -1,15 +1,33 @@
+import pickle
 from contextlib import contextmanager
 
 from .definitions import DefinitionType, Definition, DeclaredFunction
-import json
-import pickle
 
 
 class ContextError(Exception):
     pass
 
+class Params:
+    # Number of decimal places to round numbers to after evaluating. Applies
+    # to floats, vectors, & matrices.
+    #  - None (default behavior) means no rounding, leave results as is. This
+    #    may result in lots of floating point precision errors.
+    #  - If rounding is enabled, floats with no decimal component will be converted
+    #    into ints.
+    rounding = None
+
+    # If False, identifiers that don't exist in the context at parse time
+    # will raise an ExpressionSyntaxError (default behavior). If True, unknown
+    # identifiers will be added to the syntax tree as Variables.
+    #  - Note that the parser will not try to guess how best to split unknown
+    #    identifiers and will simply read left to right; for example if 'x' is
+    #    defined, 'xy' will be parsed as 'x*y' but 'yx' will be parsed as a
+    #    single variable 'yx'.
+    parse_unknown_identifiers = True
+
 class Context:
     def __init__(self):
+        self.params = Params()
         self.stack = [{}]
         self.ans = 0
 
@@ -120,6 +138,20 @@ class Context:
             self.push_scope()
             for definition in scope:
                 self.add(definition)
+
+    def round_result(self, result):
+        """ Rounds a result according to params.rounding """
+        if self.params.rounding is not None:
+            if isinstance(result, (int, float)):
+                result = round(result, self.params.rounding)
+                if result % 1 == 0:
+                    result = int(result)
+            elif hasattr(result, 'round'):
+                result = result.round(self.params.rounding)
+            elif isinstance(result, list):
+                for i, x in enumerate(result):
+                    result[i] = self.round_result(x)
+        return result
 
     def __len__(self):
         return len(self.stack)

@@ -1,6 +1,6 @@
 from .context import Context
 from .definitions import is_identifier, Associativity, DefinitionType, Definition, BinaryOperatorDefinition, \
-    UnaryOperatorDefinition, DeclaredFunction, replace_latex_symbols
+    UnaryOperatorDefinition, VariableDefinition, DeclaredFunction, replace_latex_symbols
 
 
 def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
@@ -544,7 +544,8 @@ class Number(Node):
         return str(self.value)
 
     def latex(self, ctx):
-        return str(self.value)
+        val = ctx.round_result(self.value)
+        return str(val)
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.value)
@@ -582,7 +583,10 @@ class Identifier(Node):
             # `string` is empty, in other words this token isn't an identifier.
             return node, i, None
         elif definition is None:
-            raise ExpressionSyntaxError("Undefined identifier '{}'".format(expr[i:j]), expr, i, j-i)
+            if ctx.params.parse_unknown_identifiers:
+                definition = VariableDefinition(expr[i:j], None)
+            else:
+                raise ExpressionSyntaxError("Undefined identifier '{}'".format(expr[i:j]), expr, i, j-i)
 
         if definition.is_constant:
             iden = Variable(definition)
