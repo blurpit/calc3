@@ -416,7 +416,10 @@ def rref(m):
     raise NotImplementedError('coming soon to a calculator near you')
 
 def lu(m):
-    return list(sp.linalg.lu(m))
+    l, u = sp.linalg.lu(m, permute_l=True)
+    l = matrix.from_numpy(l)
+    u = matrix.from_numpy(u)
+    return [l, u]
 
 def svd(m):
     u, s, vh = np.linalg.svd(m)
