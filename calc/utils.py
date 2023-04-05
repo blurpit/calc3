@@ -313,10 +313,14 @@ def latex_(ctx, root, do_eval=None):
     if do_eval and do_eval.evaluate(ctx):
         result = root.evaluate(ctx)
         result = ctx.round_result(result)
-        if hasattr(result, 'latex'):
-            return result.latex(ctx)
-        else:
-            return replace_latex_symbols(str(result))
+        def to_latex(obj):
+            if hasattr(obj, 'latex'):
+                return obj.latex(ctx)
+            elif isinstance(obj, list):
+                return r',\, '.join(map(to_latex, obj))
+            else:
+                return replace_latex_symbols(str(obj))
+        return to_latex(result)
 
     parent = root.parent  # temporarily remove parent
     root.parent = None
