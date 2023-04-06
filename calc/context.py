@@ -23,7 +23,7 @@ class Params:
     #    identifiers and will simply read left to right; for example if 'x' is
     #    defined, 'xy' will be parsed as 'x*y' but 'yx' will be parsed as a
     #    single variable 'yx'.
-    parse_unknown_identifiers = True
+    parse_unknown_identifiers = False
 
 class Context:
     def __init__(self):
