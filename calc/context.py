@@ -108,7 +108,7 @@ class Context:
             self.pop_scope()
 
     def save(self, filename):
-        """ Save the context (excluding the global scope) to a file """
+        """ Save DeclaredFunctions in the context to a file """
         ctx = []
         for scope in self.stack[1:]:
             items = []
@@ -143,17 +143,21 @@ class Context:
         """ Rounds a result according to params.rounding """
         if self.params.rounding is not None:
             if isinstance(result, (int, float)):
+                # Round a number
                 result = round(result, self.params.rounding)
                 if result % 1 == 0:
                     result = int(result)
             elif hasattr(result, 'round'):
+                # Object has its own round function
                 result = result.round(self.params.rounding)
-            elif isinstance(result, list):
+            elif type(result) == list:
+                # Round each element of the list
                 for i, x in enumerate(result):
                     result[i] = self.round_result(x)
         return result
 
     def __len__(self):
+        """ Number of scopes in this context """
         return len(self.stack)
 
     def __str__(self):

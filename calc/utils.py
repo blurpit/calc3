@@ -108,8 +108,10 @@ def console(ctx:Context, show_time=False):
     just_fix_windows_console()
 
     def cprint(s, col):
+        """ Print a message with a given color """
         print(col + str(s) + Style.RESET_ALL)
     def errprint(exc):
+        """ Print an exception """
         cprint('{}: {}'.format(type(exc).__name__, str(exc)), Fore.RED)
 
     with ctx.with_scope():
@@ -149,9 +151,8 @@ def graph(ctx:Context, func:Union[Definition, str], xlow=-10, xhigh=10, ylow=Non
     """
     Graph a function
 
-    `func` should be a Definition object that represents a 1-dimensional function,
-    (takes 1 real input and outputs 1 real output). It can also be a string that
-    evaluates to a 1-dimensional function.
+    `func` should be a Definition object that represents a 1-dimensional function (takes 1 real input and returns 1
+    real output). It can also be a string that evaluates to a 1-dimensional function.
 
     `xlow`, `xhigh`, `ylow`, and `yhigh` determine the range shown on each axis.
     `n` is how many points to compute.
@@ -180,6 +181,7 @@ def latex(ctx:Context, expression:Union[Definition, str]):
 
 @contextmanager
 def _capture_stdout():
+    """ Capture anything sent to stdout inside a with block and save it to a BytesIO """
     import sys
     from io import StringIO
 
@@ -192,12 +194,14 @@ def _capture_stdout():
         sys.stdout = old_stdout
 
 def concat(a, b):
+    """ Merges two lists. Does not preserve `a`! """
     if type(a) != list: a = [a]
     if type(b) == list: a.extend(b)
     else: a.append(b)
     return a
 
 def concat_all(*args):
+    """ Merges a collection of lists """
     result = []
     for item in args:
         if type(item) == list: result.extend(item)
@@ -263,9 +267,9 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
         raise TypeError("'{}' is not a function".format(f))
 
     if len(f.args) != 1:
-        raise TypeError("{} is not 1-dimensional. Function must take 1 input "
-                        "and return 1 output".format(f.signature))
+        raise TypeError("{} is not 1-dimensional. Function must take 1 input and return 1 output".format(f.signature))
 
+    # Set defaults for parameters
     if xlow is _undefined:
         xlow = -10
     if xhigh is _undefined:
@@ -277,14 +281,14 @@ def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefin
     if n is _undefined:
         n = 1000
 
+    # Make x and y axis arrays
     x = np.linspace(xlow, xhigh, n)
     y = np.empty(len(x))
 
     # Test the first input for being a float or int
     y[0] = f(x[0])
     if not isinstance(y[0], (float, int)):
-        raise TypeError("{} is not 1-dimensional. Function must take 1 input "
-                        "and return 1 output".format(f.signature))
+        raise TypeError("{} is not 1-dimensional. Function must take 1 input and return 1 output".format(f.signature))
 
     # Fill out the rest of the outputs
     for i in range(1, len(x)):
@@ -614,15 +618,11 @@ def tex_vec(node, ctx, *args):
 def tex_mat(node, ctx, *args):
     def get_column(arg):
         """ Turns a passed argument (Node object) into a column vector. """
-        if isinstance(arg, ListNode):
-            # List node "(1,2,3)"
-            return vector(*arg.children)
-        elif isinstance(arg, Function) and ctx.get(arg.name).func == vector:
-            # Vector function call "v(1,2,3)"
+        if isinstance(arg, ListNode) or isinstance(arg, Function) and ctx.get(arg.name).func == vector:
+            # List node "(1,2,3)" or vector function call "v(1,2,3)"
             return vector(*arg.children)
         elif isinstance(arg, Variable):
-            # Arg is a variable. If the variable's value is a vector, use it
-            # as the column.
+            # Arg is a variable. If the variable's value is a vector, use it as the column.
             val = ctx.get(arg.name).func
             if isinstance(val, vector):
                 return val
@@ -780,4 +780,3 @@ def create_default_context():
         override_global=True
     )
     return ctx
-

@@ -20,9 +20,7 @@ def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
     i = start
     root = ListNode()
     node = root
-    expected = [Parenthesis, UnaryOperator, Number,
-                Declaration, Identifier,
-                EndOfExpression]
+    expected = [Parenthesis, UnaryOperator, Number, Declaration, Identifier, EndOfExpression]
 
     while i < end:
         for cls in expected:
@@ -56,11 +54,6 @@ def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
             .format(expected), expr, i
         )
 
-    # # Return the child node if there is only one
-    # if len(root.children) == 1:
-    #     root = root.children[0]
-    #     root.parent = None
-
     return root
 
 
@@ -81,18 +74,15 @@ class ExpressionSyntaxError(Exception):
 
 class Token:
     """
-    A token is a single piece of an expression, such as a number, operator, function, etc.
-    Inherit from this class and implement parse() and next_expected() to use as a token. If the token
-    should live on the final syntax tree, inherit from Node. The next_expected function can be either
-    a class method or instance method.
+    A token is a single piece of an expression, such as a number, operator, function, etc. Inherit from this class and
+    implement ``parse()`` and ``next_expected()`` to use as a token. If the token should live on the final syntax tree,
+    inherit from Node. The next_expected function can be either a class method or instance method.
     """
-
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
         """
-        Parse one token of this type. If a node is sucessfully parsed, update the syntax tree accordingly.
-        Returns the updated current working node, the updated expression index, and a list of next expected token
-        types.
+        Parse one token of this type. If a node is sucessfully parsed, update the syntax tree accordingly. Returns the
+        updated current working node, the updated expression index, and a list of next expected token types.
 
         :param ctx: The context
         :param node: The current working node, i.e. the node representing the most recently parsed token
@@ -100,15 +90,15 @@ class Token:
         :param expr: The expression string
         :param start: The start index of expr (in case only part of the string is currently being parsed)
         :param end: The end index of expr
-        :return: SyntaxNode, int, List[Child class of SyntaxNode]
+        :return: Node, int, List[Node class]
         """
         raise NotImplemented
 
 
 class Node(Token):
     """
-    Nodes are tokens that live as a node on syntax tree. If a token creates some other node(s)
-    while parsing, inherit from Token instead of Node.
+    Nodes are tokens that live as a node on syntax tree. If a token creates some other node(s) while parsing, inherit
+    from Token instead of Node.
     """
     precedence = -1
     associativity = Associativity.L_TO_R
@@ -122,9 +112,11 @@ class Node(Token):
             self.associativity = associativity
 
     def next_expected(self):
+        """ Returns a list of Tokens expected after this token. """
         raise NotImplemented
 
     def evaluate(self, ctx:Context):
+        """ Evaluate this node """
         raise NotImplemented
 
     def _eval_children(self, ctx:Context, definition:Definition):
@@ -144,9 +136,11 @@ class Node(Token):
         raise NotImplemented
 
     def latex(self, ctx):
+        """ Convert this node to a LaTeX string """
         raise NotImplemented
 
     def _tree_tag(self):
+        """ Returns a string used as the tag for this node when added to a treelib.Tree """
         raise NotImplemented
 
     def add_child(self, node):
@@ -163,40 +157,42 @@ class Node(Token):
         node.add_child(self)
 
     def higher_precedence(self, other):
-        """ Returns True if this node's precedence is greater than `other`, in other words
-            that self should be evaluated before `other`. """
+        """
+        Returns True if this node's precedence is greater than `other`, in other words that self should be evaluated
+        before `other`.
+        """
         # If precedence is not equal, the higher one should be evaluated first
         if self.precedence != other.precedence:
             return self.precedence > other.precedence
 
-        # If the precedence and associativities are the same, a should be first if
-        # it is left-to-right associative
+        # If the precedence and associativities are the same, self should be first if it is left-to-right associative
         if self.associativity == other.associativity:
             return self.associativity == Associativity.L_TO_R
 
-        # If a is left-associative and b is right-associative, evaluate b before a
-        # If a is right-associative and b is left-associative, evaluate a before b
+        # If self is left-associative and other is right-associative, evaluate other before self
+        # If self is right-associative and other is left-associative, evaluate self before other
         return self.associativity == Associativity.R_TO_L
 
     def is_left_parenthesized(self, child):
-        """ Returns true if `child` (to the left of the parent) should be parenthesized.
-            A node is parenthesized if it is a list or operator and has lower precedence
-            than its parent. """
+        """
+        Returns true if `child` (to the left of the parent) should be parenthesized. A node is parenthesized if it is a
+        list or operator and has lower precedence than its parent.
+        """
         if not isinstance(child, (ListNode, BinaryOperator, UnaryOperator)):
             return False
         return not child.higher_precedence(self)
 
     def is_right_parenthesized(self, child):
-        """ Returns true if `child` (to the right of the parent) should be parenthesized.
-            A node is parenthesized if it is a list or operator and has lower precedence
-            than its parent. """
+        """
+        Returns true if `child` (to the right of the parent) should be parenthesized. A node is parenthesized if it is
+        a list or operator and has lower precedence than its parent.
+        """
         if not isinstance(child, (ListNode, BinaryOperator, UnaryOperator)):
             return False
         return self.higher_precedence(child)
 
     def propagate_precedence(self, binop):
-        """ Propagate up the tree and return the first node with lower precedence than
-            the given operator. """
+        """ Propagate up the tree and return the first node with lower precedence than the given operator. """
         # If associativity is left-to-right, keep propagating up when precedence is equal.
         node = self
         while node.parent and node.parent.higher_precedence(binop):
@@ -204,10 +200,12 @@ class Node(Token):
         return node
 
     def leftmost_leaf(self):
-        """ Propagate down the tree and returns the leftmost leaf of this node """
+        """
+        Propagate down the tree and returns the leftmost leaf of this node. The leftmost leaf is the node immediately
+        to the right of this node in the original expression.
+        """
         if len(self.children) == 0 or self.associativity == Associativity.L_TO_R:
-            # If the node is left-to-right associative, then it is considered to be
-            # to the left of its child nodes
+            # If the node is left-to-right associative, then it is considered to be to the left of its child nodes
             return self
 
         return self.children[0].leftmost_leaf()
@@ -215,15 +213,13 @@ class Node(Token):
     def rightmost_leaf(self):
         """ Propagate down the tree and returns the rightmost leaf of this node """
         if len(self.children) == 0 or self.associativity == Associativity.R_TO_L:
-            # If the node is right-to-left associative, then it is considered to be
-            # to the right of its child nodes
+            # If the node is right-to-left associative, then it is considered to be to the right of its child nodes
             return self
 
         return self.children[-1].rightmost_leaf()
 
     def add_to_tree(self, tree, num):
-        """ Add this syntax tree to a treelib.Tree. `num` is added to the tag
-            to keep children in order. """
+        """ Add this syntax tree to a treelib.Tree. `num` is added to the tag to keep children in order. """
         tree.create_node(
             str(num) + ' ' + self._tree_tag(),
             id(self),
@@ -281,8 +277,8 @@ class BinaryOperator(Node):
         binop = cls(op)
         node = node.propagate_precedence(binop)
 
-        # Special case for concatenation operator. Instead of adding it
-        # as a node, continue adding children to the parent node
+        # Special case for concatenation operator. Instead of adding it as a node, continue adding children to the
+        # parent node
         if binop.symbol == ',':
             return node.parent, i+1, binop.next_expected()
 
@@ -418,9 +414,8 @@ class Parenthesis(Token):
         root:ListNode = parse(ctx, expr, start=i+1, end=close)
 
         if isinstance(node, (Function, Declaration)):
-            # If the current node is a function, keep the working node on the function.
-            # Add all child nodes of the parenthesized expression root as children of the
-            # function.
+            # If the current node is a function, keep the working node on the function. Add all child nodes of the
+            # parenthesized expression root as children of the function.
             for child in root.children:
                 node.add_child(child)
         else:
@@ -435,6 +430,8 @@ class Parenthesis(Token):
     @classmethod
     def next_expected(cls, root):
         if isinstance(root, (Identifier, Declaration)) and not root.is_const:
+            # If the parentheses contained a function then tokens after the parentheses should be treated as a function
+            # call (Ex. "(sin)(3)" or "(f(x)=2x)(4)")
             return [BinaryOperator, FunctionCall, EndOfExpression]
         return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
 
@@ -565,13 +562,12 @@ class Identifier(Node):
         string = ''
         definition = None
 
-        # Find the longest continuous identifier that exists in the current context
-        # Due to implicit multiplication & such, identifiers may be strung together,
-        # ex. "sincosepi" = "sin(cos(e*pi))"
-        # `string` will contain the entire string "sincosepi", and j will be the end
-        # index of `string`. Definition will be the definition of the first identifier
-        # in the context, in this example the definition for "sin".
-        # Parsing the rest ("cosepi") will be delegated to the next token.
+        # Find the longest continuous identifier that exists in the current context. Implicit multiplication & implicit
+        # function calls can mean identifiers may be strung together (Ex. "sincosepi" = "sin(cos(e*pi))").
+        #   `string` will contain the entire string "sincosepi", and j will be the end index of `string`.
+        #   `definition` will be the definition of the first identifier in the context, in this example the definition
+        #   for sin.
+        # Parsing the rest will be delegated to the next token.
         while j < end:
             string += expr[j]
             if not is_identifier(string):
@@ -584,6 +580,8 @@ class Identifier(Node):
             return node, i, None
         elif definition is None:
             if ctx.params.parse_unknown_identifiers:
+                # If unknown identifiers is enabled, parse the whole string as a single variable, which will throw a
+                # ContextError if it is still undefined at evaluation time.
                 definition = VariableDefinition(expr[i:j], None)
             else:
                 raise ExpressionSyntaxError("Undefined identifier '{}'".format(expr[i:j]), expr, i, j-i)
@@ -637,6 +635,7 @@ class Function(Identifier):
             return name
 
         def arg_str(child):
+            # Add parentheses to the argument if it is a list
             if isinstance(child, ListNode):
                 return '(' + str(child) + ')'
             return str(child)
@@ -650,8 +649,7 @@ class Function(Identifier):
 
         if n_inputs == 0:
             if isinstance(self.parent, Function):
-                # Function is being passed as an argument to another function.
-                # Use only the name.
+                # Function is being passed as an argument to another function. Use only the name.
                 return replace_latex_symbols(definition.name)
             elif isinstance(definition, DeclaredFunction):
                 # Use the full declaration.
@@ -708,17 +706,8 @@ class Variable(Identifier):
 
 
 class ImplicitMultiplication(Token):
-    # after: number, variable
-    # before: parenthesis, number, variable
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
-        # if isinstance(node, (Function, Declaration)) and len(node.children) == 0:
-        #     # Functions followed by implicit multiplication is a call if
-        #     # the function has no children.
-        #     # Variables followed by '()' are also not implicit multiplication;
-        #     # that will be handled by Parenthesis later.
-        #     return node, i, None
-
         op = ctx.get('*', DefinitionType.BINARY_OPERATOR, default=None)
         if not isinstance(op, BinaryOperatorDefinition):
             # No multiplication operator in the ctx.
@@ -755,17 +744,11 @@ class ImplicitMultiplication(Token):
             # Ex. 4(2^3) -> 4*2^3 but 4(x^2) -> 4x^2
             return False
 
-        # if isinstance(left.rightmost_leaf(), Identifier) \
-        #         and isinstance(right.leftmost_leaf(), Identifier):
-        #     # Don't implicitly multiply two identifiers
-        #     return False
-
         return True
 
 
 class Declaration(Node):
-    """ A declaration of a new identifier.
-        Takes the form of foo(a,b,c)=... """
+    """ A declaration of a new identifier. Takes the form of foo(a,b,c)=... """
     precedence = 1
 
     def __init__(self, definition, root):
@@ -788,15 +771,15 @@ class Declaration(Node):
             # Parse the signature
             name, args, is_const = cls.parse_signature(expr, i, equals)
         except StopIteration:
-            # If signature parsing fails, this isn't a valid declaration.
-            # Probably means there's a declaration later on and this is an identifier.
+            # If signature parsing fails, this isn't a valid declaration. Probably means there's a declaration later on
+            # and this is an identifier.
             return node, i, None
 
         # Create a function definition
         definition = DeclaredFunction(name, args, is_const)
 
-        # Push the function definition and its argument variables to the context
-        # and parse the remainder of the expression
+        # Push the function definition and its argument variables to the context and parse the remainder of the
+        # expression
         with ctx.with_scope():
             ctx.add(definition)
             definition.add_args_to_context(ctx, None)
@@ -817,15 +800,14 @@ class Declaration(Node):
     @classmethod
     def parse_signature(cls, expr, i, end):
         """
-        Parses a function signature from a string and returns name, args array.
-        Raises StopIteration if the signature syntax is invalid.
+        Parses a function signature from a string and returns name, args array. Raises StopIteration if the signature
+        syntax is invalid.
 
         Returns (name, args, const).
-        `args` is a list of strings, see FunctionDefinition().
-        `is_const` is whether this declaration should be evaluated once then saved, or re-evalated
-        each time it is used. This is True if the signature takes no arguments and does not have
-        empty parentheses. For example "x() = 3y" would change when y changes, whereas "x = 3y"
-        would not.)
+        `args` is a list of strings, see FunctionDefinition(). `is_const` is whether this declaration should be
+        evaluated once then saved, or re-evalate each time it is used. This is True if the signature takes no arguments
+        and does not have empty parentheses. For example "x() = 3y" would change when y changes, whereas "x = 3y" would
+        not.
 
         :param expr: Expression string
         :param i: Current index
@@ -836,21 +818,17 @@ class Declaration(Node):
         parens = expr.find('(', i, end)
 
         if parens == -1:
-            # Variable declaration (0-arg function) without parentheses.
-            # Entire signature must be a single identifier.
+            # Variable declaration (0-arg function) without parentheses. Entire signature must be a single identifier.
             parens = end
             rparens = end - 1
             is_const = True
         else:
             # Locate closing parenthesis. Should be before the equals sign.
-            # If it isn't, this may be a different token followed by a declaration
-            # somewhere later.
             rparens = Parenthesis.find_close(expr, parens, end, err=False)
             is_const = False
 
         if rparens == -1 or rparens != end - 1:
             # Closing parenthesis exists but it is not immediately before the equals sign.
-            # This token probably isn't a declaration. Ex:
             raise StopIteration
 
         # Name of declared identifier
@@ -865,7 +843,6 @@ class Declaration(Node):
         # Parse argument list
         args = []
         if i < end:
-            # More than 0 arguments
             j = i
             while j < end:
                 if expr[j] == ',':
@@ -880,11 +857,10 @@ class Declaration(Node):
     @classmethod
     def find_expression_end(cls, ctx, expr, start, end):
         """
-        Given a declaration, determines the end of the expression after the equals sign.
-        For example, in the expression "f(x)=3(3+2), 5, 7" the declaration for `f` could be
-        "3+2" or "3+2, 5, 7" depending on precedence.
-        Current implementation: Stop at first binary operator with greater precedence than
-        Declaration
+        Given a declaration, determines the end of the expression after the equals sign. For example, in the expression
+        "f(x)=3(3+2), 5, 7" the declaration for `f` could be "3+2" or "3+2, 5, 7" depending on precedence.
+
+        Current implementation: Stop at first binary operator with greater precedence than Declaration.
 
         :param ctx: Context
         :param expr: Expression string
@@ -896,8 +872,10 @@ class Declaration(Node):
         while i < end:
             ch = expr[i]
             if ch == '(':
+                # Skip everything inside parentheses
                 i = Parenthesis.find_close(expr, i, end)
             elif (ch, DefinitionType.BINARY_OPERATOR) in ctx:
+                # Binary operator, check the precedence
                 binop = ctx.get(ch, DefinitionType.BINARY_OPERATOR)
                 if cls.precedence > binop.precedence:
                     break
@@ -934,10 +912,10 @@ class Declaration(Node):
         with ctx.with_scope():
             if not self.definition.name in ctx:
                 ctx.add(self.definition)
+
             self.definition.add_args_to_context(ctx, None)
 
-            signature = self.definition.signature
-            signature = replace_latex_symbols(signature)
+            signature = replace_latex_symbols(self.definition.signature)
             body = self.definition.func.latex(ctx)
             if isinstance(self.definition.func, ListNode):
                 body = r'\left( ' + body + r' \right)'
@@ -945,7 +923,7 @@ class Declaration(Node):
             result = '{} = {}'.format(signature, body)
 
             if len(self.children) > 0:
-                # Lambda call "(f(x)=3x)(6)"
+                # Lambda call, Ex. "(f(x)=3x)(6)"
                 result = r'\left( {} \right)\left( {} \right)'.format(
                     result,
                     ',\, '.join(node.latex(ctx) for node in self.children)

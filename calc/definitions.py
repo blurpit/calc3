@@ -90,6 +90,7 @@ class Definition:
 
     @property
     def signature(self):
+        """ The function signature, Ex. 'foo(a, b, c)'. """
         if self.is_constant:
             return self.display_name or self.name
 
@@ -108,8 +109,7 @@ class Definition:
 
     @property
     def is_constant(self):
-        """ Constant functions take 0 arguments and their `func` is a value instead of
-            a callable. """
+        """ Constant functions take 0 arguments and their `func` is a value instead of a callable. """
         return len(self.args) == 0 and not callable(self.func)
 
     def __str__(self):
@@ -120,9 +120,9 @@ class Definition:
 
 def _argument_definition_wrapper(name, is_func, value):
     """
-    Returns a Definition for functions whose full signature is unknown. This is added
-    to the context at parse-time so the parser knows a given identifier exists before
-    knowing its exact definition. Kind of like a forward declaration in C. Kind of.
+    Returns a Definition for functions whose full signature is unknown. This is adde to the context at parse-time so
+    the parser knows a given identifier exists before knowing its exact definition. Kind of like a forward declaration
+    in C. Kind of.
 
     :param name: Identifier name
     :param is_func: Whether this identifier takes more than 1 or more inputs
@@ -140,50 +140,44 @@ class FunctionDefinition(Definition):
         """
         Define a function
 
-        `args` should be a list of strings which represent the name of each argument.
-        If this function takes another function as an argument, add () to the name of
-        that argument, for example ``args=['f()', 'x']`` takes a function `f` and a
-        variable `x` as inputs.
+        `args` should be a list of strings which represent the name of each argument. If this function takes another
+        function as an argument, add '()' to the name of that argument, for example ``args=['f()', 'x']`` takes a
+        function `f` and a variable `x` as inputs.
 
-        `func` should be a callable if the function takes 1 or more arguments, otherwise
-        it may be either a callable or a direct value.
+        `func` should be a callable if the function takes 1 or more arguments, otherwise it may be either a callable or
+        a direct value.
 
-        `precedence` is used when the function is called implicitly to determine what
-        goes inside the parentheses. Default is 3 (between + and *). Ex. "sin2*pi/3+8"
-        is parsed as "sin(2*pi/3)+8. Higher number = higher precedence.
+        `precedence` determines what goes inside the parentheses when the function is called implicitly. Default is 3
+        (between + and *). Ex. ``sin2*pi/3+8`` is parsed as ``sin(2*pi/3)+8``. Higher number = higher precedence.
 
-        Set `display_name` to have the expression show a different name from what was
-        inputted when parsed and converted back to a string. Ex. the funcion declaration
-        "f(x)=2pix" will be shown as "f(x) = 2πx" when printed.
+        Set `display_name` to have the expression show a different name than what was passed into `name` when the
+        expression is parsed and converted back to a string. Ex. if a function has a name of 'delta' and a `display_name`
+        of 'Δ', then the function would use 'delta(...)' in expressions but ``str(definition)`` will be 'Δ(...)'.
 
-        `latex` should be a function that that takes `node`, `ctx`, and `*inputs`. `node` is
-        the ``Function`` node in the syntax tree representing the function call, and `*inputs`
-        are the inputs to the function call. It should return a LaTeX string. For example, for
-        the expression ``int(sin, 0, 3)``, `node` will be a ``Function`` object where ``node.name``
-        is ``'int'`` (you can get ``int``'s the definition using ``ctx.get(node.name)``), and
-        ``inputs`` will be ``(Number(0), Number(3))``. Use ``inputs[i].latex(ctx)`` to convert an
-        input to latex. Passing a `latex` function is useful for special functions that should be
-        rendered differently from the standard ``name(a, b, c)`` format in latex, integrals for
-        example.
+        `latex` should be a function that that takes `node`, `ctx`, and `*inputs`. `node` is the ``Function`` node in
+        the syntax tree representing the function call, and `*inputs` are the inputs to the function call. It should
+        return a LaTeX string. For example, for the expression ``int(sin, 0, 3)``, `node` will be the ``Function`` node
+        representing the integral function call (you can get ``int``'s the definition using ``ctx.get(node.name)``),
+        and ``inputs`` will be ``(Number(0), Number(3))``. Use ``inputs[i].latex(ctx)`` to convert  an input to latex.
+        Passing a `latex` function is useful for special functions that should be rendered differently from the standard
+        ``name(a, b, c)`` format in latex, like integrals.
 
-        `help_text` will be shown when evaluating ``help([name])``. If none is provided, it
-        will use the docstring associated with `func`. If that is also not provided, it will
-        say "No description provided."
+        `help_text` will be shown when evaluating ``help(name)``. If none is provided, it will use the docstring
+        associated with `func`. If that is also not provided, it will say "No description provided."
 
-        Inputs passed into `func` are usually pre-evaluated. If `manual_eval` is True,
-        then they will not be evaluated, and instead `func` will be passed first the
-        context, then the ``Node`` objects representing the inputs to the function. Use
-        ``.evaluate(ctx)`` to evaluate them manually. This can be useful for some functions
-        that need to short-circuit, such as ``if(condition, if_t, if_f)``, where if the
-        condition is true, ``false`` should not be evaluated.
+        If `manual_eval` is True, inputs passed into `func` will not be evaluated, and instead `func` will be passed
+        `ctx`, `*inputs`. The inputs are the ``Node`` objects representing the inputs to the function. Use
+        ``node.evaluate(ctx)`` to evaluate them. This can be useful for functions that should not evaluate all inputs
+        beforehand, such as ``if(condition, if_t, if_f)``, where if the condition is true, ``if_f`` should not be
+        evaluated.
 
-        :param name: Name of the function
-        :param args: List of argument names
-        :param func: The function itself
-        :param precedence: Precedence for this function if parentheses are absent (default 2)
+        :param name: Function name
+        :param args: Function arguments
+        :param func: Function implementation
+        :param precedence: Function precedence if parentheses are absent (default 2)
         :param display_name: Name to use for str(definition)
         :param latex: Function that converts a function call expression to LaTeX
-        :param help_text: Text to return when evaluating help(...)
+        :param help_text: Text shown on help()
         :param manual_eval: If True, evaluate inputs inside `func` rather than beforehand
         """
         # Convert passed args list into args and f_args
@@ -214,8 +208,8 @@ class FunctionDefinition(Definition):
                 raise ValueError("Invalid identifier name '{}'".format(arg))
 
         # Check func
-        # If func is None we'll assume it's supposed to be replaced later. If someone doesn't
-        # replace it, that's more their problem than mine.
+        # If func is None we'll assume it's supposed to be replaced later. If it doesn't get replaced, that's more
+        # their problem than mine.
         if func is not None and len(args) > 0 and not callable(func):
             raise ValueError("Functions that take 1 or more arguments must be passed a callable, "
                              "not '{}'".format(func))
@@ -254,11 +248,9 @@ class VariableDefinition(Definition):
 class DeclaredFunction(FunctionDefinition):
     """
     DeclaredFunctions are functions created using a declaration expression. For example
-    ``f = calc.evaluate(ctx, "f(x) = 3x^2")`` will store a DeclaredFunction object into
-    ``f``. Declared functions can be called like a normal function (``f(4)`` will return
-    48) or added to a context using ``ctx.add(f)``.
+    ``calc.evaluate(ctx, "f(x) = 3x^2")`` will return a DeclaredFunction. Declared functions can be called like a normal
+    function (``f(4)`` will return 48) or added to a context using ``ctx.add(f)``.
     """
-
     def __init__(self, name, args, is_const):
         super().__init__(name, args, None)
         self.ctx = None
@@ -269,10 +261,19 @@ class DeclaredFunction(FunctionDefinition):
         return copy(self)
 
     def bind_context(self, ctx):
-        """ Bind this function to a context that will be used when __call__ is invoked """
+        """
+        Bind this function to a context. A context must be bound in order to use __call__. This is done automatically
+        when the DeclaredFunction is returned from ``calc.evaluate()``.
+
+        If a DeclaredFunction is added to a context using ``ctx.add()``, a shallow copy is added to the context and
+        bound to it. So, if a DeclaredFunction ``f`` is bound to ``ctx1``, then it will still be bound to ``ctx1``
+        after ``ctx2.add(f)`` is used. However, ``ctx2.get('f')`` will return a duplicate DeclaredFunction that is
+        bound to ``ctx2``.
+        """
         self.ctx = ctx
 
     def __call__(self, *inputs):
+        """ Evaluate the function. A context must be binded to use this. """
         self.check_inputs(len(inputs))
 
         # Check cached value
@@ -301,8 +302,12 @@ class DeclaredFunction(FunctionDefinition):
             body = str(self.func)
 
         if type(self.func).__name__ == 'ListNode':
-            # add parentheses if the function returns a list "f(x)=(1,2,3), 4"
+            # add parentheses if the function returns a list (Ex. "f(x)=(1,2,3), 4") because the comma operator has
+            # lower precedence than a declaration.
+            # Todo: compare precedences instead of a direct check for a ListNode type. This should, ideally, reflect
+            #       Declaration.find_expression_end().
             body = '(' + body + ')'
+
         return '{} = {}'.format(self.signature, body)
 
 
@@ -313,19 +318,17 @@ class BinaryOperatorDefinition(Definition):
         """
         Define a binary operator
 
-        `func` should be a callable that takes 2 inputs and returns the result of the operator,
-        where the first input is the left operand and the 2nd is the left.
+        `func` should be a callable that takes 2 inputs and returns the result of the operator, where the first input
+        is the left operand and the 2nd is the right operand.
 
-        `precedence` and `associativity` are required for binary operators. Precedence defines
-        what order operators are evaluated when parentheses aren't used. Higher number means
-        higher precedence.
+        `precedence` and `associativity` are required for binary operators. Precedence defines what order operators are
+        evaluated when parentheses aren't used. Higher number = higher precedence.
 
-        `latex` should be a function that takes the following inputs: `self`, `ctx`, `left`, `right`,
-        `parens_left`, `parens_right`, and `is_implicit`. `self` is this BinaryOperatorDefinition
-        object, `left` and `right` are the operands (Node objects). `parens_right` and `parens_left`
-        say whether the left/right operands are parenthesized (this happens when they are lower
-        precedence than the parent operator, ex. (3+5)/2). `is_implicit` says whether the operator
-        is implicit, ex. 2*π vs 2π. Use ``.latex(ctx)`` to convert `left` and `right` to latex.
+        `latex` should be a function that takes the following inputs: `node`, `ctx`, `left`, `right`, `parens_left`,
+        `parens_right`, and `is_implicit`. `node` is the BinaryOperator node in the syntax tree, and `left` and `right`
+        are the operand Nodes. `parens_right` and `parens_left` say whether the left/right operands are parenthesized
+        (this happens when they are lower precedence than the parent operator, Ex. "(3+5)/2"). `is_implicit` says
+        whether the operator is implicit, Ex. "2*π" vs "2π". Use ``.latex(ctx)`` to convert `left` and `right` to latex.
 
         :param symbol: Operator symbol (must be exactly 1 character)
         :param func: Function that implements the operator
@@ -499,8 +502,8 @@ class matrix(list):
         # matrix-scalar multiplication
         if isinstance(other, (int, float)):
             return matrix(*(
-                other * column
-                for column in self
+                other * row
+                for row in self
             ))
 
         # matrix-matrix multiplication
@@ -537,11 +540,14 @@ class matrix(list):
         if isinstance(power, int):
             if self.shape[0] == self.shape[1]:
                 if power == -1:
+                    # M^-1 = inverse of M
                     arr = linalg.inv(self)
                     return matrix.from_numpy(arr)
                 elif power == 0:
+                    # M^0 = identity matrix
                     return matrix.id(self.shape[0])
                 elif power > 0:
+                    # M^n = M*M*M*...
                     m = self
                     for _ in range(power-1):
                         m = m * self
@@ -555,6 +561,7 @@ class matrix(list):
         return self * -1
 
     def copy(self):
+        """ Make a copy of the matrix (row vectors are copied but not deep copied) """
         return matrix(*(row.copy() for row in self))
 
     def transp(self):
@@ -578,6 +585,7 @@ class matrix(list):
 
     @staticmethod
     def zero(rows, cols):
+        """ Returns a rows x cols matrix of all zeros """
         return matrix(*(
             vector(*(0 for _ in range(cols)))
             for _ in range(rows)
@@ -596,13 +604,13 @@ class matrix(list):
     @staticmethod
     def from_numpy(arr):
         """ Convert a 2d np.ndarray to matrix """
-        if arr.ndim != 2:
-            raise LinAlgError('incompatible shape for matrix')
-        m = matrix.zero(*arr.shape)
-        for r in range(arr.shape[0]):
-            for c in range(arr.shape[1]):
-                m[r][c] = arr[r][c]
-        return m
+        if arr.ndim == 2:
+            m = matrix.zero(*arr.shape)
+            for r in range(arr.shape[0]):
+                for c in range(arr.shape[1]):
+                    m[r][c] = arr[r][c]
+            return m
+        raise LinAlgError('incompatible shape for matrix')
 
     def round(self, places):
         """ Round all elements of this matrix to `places` """
@@ -697,6 +705,9 @@ _latex_substitutions = {
 }
 
 def replace_latex_symbols(s):
+    """
+    Replaces all instances of math symbols in a string with their corresponding LaTeX command. Ex.
+    ``replace_latex_symbols("test 2π hello") returns "test 2\pi hello". See ``_latex_substitutions`` above. """
     result = ''
     for c in s:
         result += _latex_substitutions.get(c, c)
