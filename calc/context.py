@@ -142,14 +142,11 @@ class Context:
     def round_result(self, result):
         """ Rounds a result according to params.rounding """
         if self.params.rounding is not None:
-            if isinstance(result, (int, float)):
-                # Round a number
-                result = round(result, self.params.rounding)
-                if result % 1 == 0:
-                    result = int(result)
-            elif hasattr(result, 'round'):
+            if hasattr(result, '__round__'):
                 # Object has its own round function
-                result = result.round(self.params.rounding)
+                result = round(result, self.params.rounding)
+                if isinstance(result, float) and result % 1 == 0:
+                    result = int(result)
             elif type(result) == list:
                 # Round each element of the list
                 for i, x in enumerate(result):

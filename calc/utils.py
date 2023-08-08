@@ -379,7 +379,7 @@ def sum_(*arr):
     return sum(arr)
 
 def len_(*arr):
-    if len(arr) == 1 and isinstance(arr[0], list):
+    if len(arr) == 1 and hasattr(arr[0], '__len__'):
         return len(arr[0])
     return len(arr)
 
