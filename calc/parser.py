@@ -830,7 +830,7 @@ class Declaration(Node):
             is_const = False
 
         if rparens == -1 or rparens != end - 1:
-            # Closing parenthesis exists but it is not immediately before the equals sign.
+            # Closing parenthesis exists, but it is not immediately before the equals sign.
             return None, None, None
 
         # Name of declared identifier

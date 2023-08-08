@@ -324,8 +324,8 @@ class BinaryOperatorDefinition(Definition):
         `precedence` and `associativity` are required for binary operators. Precedence defines what order operators are
         evaluated when parentheses aren't used. Higher number = higher precedence.
 
-        `latex` should be a function that takes the following inputs: `ctx`, `binop`, `left`, `right`, `parens_left`,
-        `parens_right`, and `is_implicit`. `binop` is the BinaryOperator node in the syntax tree, and `left` and `right`
+        `latex` should be a function that takes the following inputs: `ctx`, `node`, `left`, `right`, `parens_left`,
+        `parens_right`, and `is_implicit`. `node` is the BinaryOperator node in the syntax tree, and `left` and `right`
         are the operand Nodes. `parens_right` and `parens_left` say whether the left/right operands are parenthesized
         (this happens when they are lower precedence than the parent operator, Ex. "(3+5)/2"). `is_implicit` says
         whether the operator is implicit, Ex. "2*π" vs "2π". Use ``.latex(ctx)`` to convert `left` and `right` to latex.
@@ -363,9 +363,18 @@ class UnaryOperatorDefinition(Definition):
         """
         Define a unary operator.
 
+        `func` should be a callable that takes 1 input and returns the result of the operator.
+
+        `latex` should be a function that takes the following inputs: `ctx`, `node`, `left`, `right`, `parens_left`,
+        `parens_right`, and `is_implicit`. `node` is the UnaryOperator node in the syntax tree, and `right`
+        are the operand Nodes. `parens_right` and `parens_left` say whether the left/right operands are parenthesized
+        (this happens when they are lower precedence than the parent operator, Ex. "(3+5)/2"). `is_implicit` says
+        whether the operator is implicit, Ex. "2*π" vs "2π". Use ``.latex(ctx)`` to convert `left` and `right` to latex.
+
         :param symbol: Operator symbol (must be exactly 1 character)
         :param func: Function that implements the operator (should take 1 input)
         :param precedence: Operator precedence
+        :param latex: Function that converts the operator into LaTeX
         :param help_text: Text shown on help()
         """
         if len(symbol) != 1:

@@ -289,7 +289,7 @@ def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
     if len(f.args) != 1:
         raise TypeError("{} is not 1-dimensional. Function must take 1 input and return 1 output".format(f.signature))
 
-    # Make x and y axis arrays
+    # Make x and y-axis arrays
     x = np.linspace(xlow, xhigh, n)
     y = np.empty(len(x))
 
@@ -705,15 +705,15 @@ def create_default_context():
         FunctionDefinition('latex', ['expr', '*eval'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 as a 2nd argument to evaluate before converting to LaTeX.", manual_eval=True),
 
         # Logic & Data Structure Functions
-        FunctionDefinition('sum',    ['*x'], sum_,                                     help_text="Sum of `x`"),
-        FunctionDefinition('len',    ['*x'], len_,                                     help_text="Length of `x`"),
-        FunctionDefinition('filter', ['f()', '*x'], filter_,                           help_text="Filters `x` for elements where `f(x)` is nonzero"),
-        FunctionDefinition('map',    ['f()', '*x'], map_,                              help_text="Applies a function `f(x)` to each element of `x`"),
-        FunctionDefinition('range',  ['start', 'stop'], range_,                        help_text="Returns a list of integers from `start` (inclusive) to `stop` (exclusive)"),
-        FunctionDefinition('max',    ['*x'], max,                                      help_text="Returns the largest element of `x`"),
-        FunctionDefinition('min',    ['*x'], min,                                      help_text="Returns the smallest element of `x`"),
-        FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_, latex=tex_if, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
-        FunctionDefinition('set',    ['*x'], set_,                                     help_text="Removes duplicates from a list"),
+        FunctionDefinition('sum',    ['*x'],                        sum_,                  help_text="Sum of `x`"),
+        FunctionDefinition('len',    ['*x'],                        len_,                  help_text="Length of `x`"),
+        FunctionDefinition('filter', ['f()', '*x'],                 filter_,               help_text="Filters `x` for elements where `f(x)` is nonzero"),
+        FunctionDefinition('map',    ['f()', '*x'],                 map_,                  help_text="Applies a function `f(x)` to each element of `x`"),
+        FunctionDefinition('range',  ['start', 'stop'],             range_,                help_text="Returns a list of integers from `start` (inclusive) to `stop` (exclusive)"),
+        FunctionDefinition('max',    ['*x'],                        max,                   help_text="Returns the largest element of `x`"),
+        FunctionDefinition('min',    ['*x'],                        min,                   help_text="Returns the smallest element of `x`"),
+        FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_,     latex=tex_if, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
+        FunctionDefinition('set',    ['*x'],                        set_,                  help_text="Removes duplicates from a list"),
 
         # Roots & Complex Functions
         FunctionDefinition('sqrt',  'x',  math.sqrt, latex=tex_root, help_text="Square root of `x`"),

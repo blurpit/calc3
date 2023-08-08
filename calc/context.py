@@ -140,7 +140,7 @@ class Context:
                 self.add(definition)
 
     def round_result(self, result):
-        """ Rounds a result according to params.rounding """
+        """ Rounds a result according to ``params.rounding`` """
         if self.params.rounding is not None:
             if hasattr(result, '__round__'):
                 # Object has its own round function
