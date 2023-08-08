@@ -349,7 +349,7 @@ def not_(x):
 def type_(obj):
     return type(obj).__name__
 
-def root(x, n):
+def nroot(x, n):
     return x ** (1/n)
 
 def hypot(x, y):
@@ -708,7 +708,7 @@ def create_default_context():
 
         # Roots & Complex Functions
         FunctionDefinition('sqrt',  'x',  math.sqrt, latex=tex_root, help_text="Square root of `x`"),
-        FunctionDefinition('root',  'xn', root,      latex=tex_root, help_text="`n`th root of `x`"),
+        FunctionDefinition('root',  'xn', nroot,     latex=tex_root, help_text="`n`th root of `x`"),
         FunctionDefinition('hypot', 'xy', hypot,                     help_text="Returns sqrt(x^2 + y^2)"),
 
         # Trigonometric Functions
