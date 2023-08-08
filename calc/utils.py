@@ -241,7 +241,10 @@ def help_(ctx, obj):
         elif not definition.is_constant and definition.func.__doc__ is not None:
             help_text = definition.func.__doc__
         elif isinstance(definition, DeclaredFunction):
-            help_text = "User defined function or constant"
+            if definition.is_constant:
+                help_text = "User defined constant"
+            else:
+                help_text = "User defined function"
         else:
             help_text = "No description provided"
 
