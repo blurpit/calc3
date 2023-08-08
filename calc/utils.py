@@ -375,18 +375,23 @@ def randrange(a, b):
 
 def sum_(*arr):
     if len(arr) == 1 and hasattr(arr[0], '__iter__'):
-        return sum(arr[0])
+        arr = arr[0]
     return sum(arr)
 
 def len_(*arr):
     if len(arr) == 1 and hasattr(arr[0], '__len__'):
-        return len(arr[0])
+        arr = arr[0]
     return len(arr)
 
 def filter_(f, *arr):
     if len(arr) == 1 and hasattr(arr[0], '__iter__'):
         arr = arr[0]
     return list(filter(f, arr))
+
+def map_(f, *arr):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
+        arr = arr[0]
+    return list(map(f, arr))
 
 def range_(start, stop):
     return list(range(start, stop))
@@ -700,6 +705,7 @@ def create_default_context():
         FunctionDefinition('sum',    ['*x'], sum_,                                     help_text="Sum of `x`"),
         FunctionDefinition('len',    ['*x'], len_,                                     help_text="Length of `x`"),
         FunctionDefinition('filter', ['f()', '*x'], filter_,                           help_text="Filters `x` for elements where `f(x)` is nonzero"),
+        FunctionDefinition('map',    ['f()', '*x'], map_,                              help_text="Applies a function `f(x)` to each element of `x`"),
         FunctionDefinition('range',  ['start', 'stop'], range_,                        help_text="Returns a list of integers from `start` (inclusive) to `stop` (exclusive)"),
         FunctionDefinition('max',    ['*x'], max,                                      help_text="Returns the largest element of `x`"),
         FunctionDefinition('min',    ['*x'], min,                                      help_text="Returns the smallest element of `x`"),
