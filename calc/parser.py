@@ -769,10 +769,10 @@ class Declaration(Node):
             # Not a declaration.
             return node, i, None
 
-        try:
-            # Parse the signature
-            name, args, is_const = cls.parse_signature(expr, i, equals)
-        except StopIteration:
+        # Parse the signature
+        name, args, is_const = cls.parse_signature(expr, i, equals)
+
+        if name is None:
             # If signature parsing fails, this isn't a valid declaration. Probably means there's a declaration later on
             # and this is an identifier.
             return node, i, None
@@ -802,14 +802,14 @@ class Declaration(Node):
     @classmethod
     def parse_signature(cls, expr, i, end):
         """
-        Parses a function signature from a string and returns name, args array. Raises StopIteration if the signature
-        syntax is invalid.
+        Parses a function signature from a string and returns name, args array.
 
         Returns (name, args, const).
         `args` is a list of strings, see FunctionDefinition(). `is_const` is whether this declaration should be
         evaluated once then saved, or re-evalate each time it is used. This is True if the signature takes no arguments
         and does not have empty parentheses. For example "x() = 3y" would change when y changes, whereas "x = 3y" would
         not.
+        If the signature is invalid, returns (None, None, None)
 
         :param expr: Expression string
         :param i: Current index
@@ -831,12 +831,12 @@ class Declaration(Node):
 
         if rparens == -1 or rparens != end - 1:
             # Closing parenthesis exists but it is not immediately before the equals sign.
-            raise StopIteration
+            return None, None, None
 
         # Name of declared identifier
         name = expr[i:parens]
         if not is_identifier(name):
-            raise StopIteration
+            return None, None, None
 
         # Move start & end to capture the argument list
         i = parens + 1
