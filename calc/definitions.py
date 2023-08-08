@@ -154,7 +154,7 @@ class FunctionDefinition(Definition):
         expression is parsed and converted back to a string. Ex. if a function has a name of 'delta' and a `display_name`
         of 'Δ', then the function would use 'delta(...)' in expressions but ``str(definition)`` will be 'Δ(...)'.
 
-        `latex` should be a function that that takes `node`, `ctx`, and `*inputs`. `node` is the ``Function`` node in
+        `latex` should be a function that that takes `ctx`, `node`, and `*inputs`. `node` is the ``Function`` node in
         the syntax tree representing the function call, and `*inputs` are the inputs to the function call. It should
         return a LaTeX string. For example, for the expression ``int(sin, 0, 3)``, `node` will be the ``Function`` node
         representing the integral function call (you can get ``int``'s the definition using ``ctx.get(node.name)``),
@@ -324,8 +324,8 @@ class BinaryOperatorDefinition(Definition):
         `precedence` and `associativity` are required for binary operators. Precedence defines what order operators are
         evaluated when parentheses aren't used. Higher number = higher precedence.
 
-        `latex` should be a function that takes the following inputs: `node`, `ctx`, `left`, `right`, `parens_left`,
-        `parens_right`, and `is_implicit`. `node` is the BinaryOperator node in the syntax tree, and `left` and `right`
+        `latex` should be a function that takes the following inputs: `ctx`, `binop`, `left`, `right`, `parens_left`,
+        `parens_right`, and `is_implicit`. `binop` is the BinaryOperator node in the syntax tree, and `left` and `right`
         are the operand Nodes. `parens_right` and `parens_left` say whether the left/right operands are parenthesized
         (this happens when they are lower precedence than the parent operator, Ex. "(3+5)/2"). `is_implicit` says
         whether the operator is implicit, Ex. "2*π" vs "2π". Use ``.latex(ctx)`` to convert `left` and `right` to latex.

@@ -466,12 +466,12 @@ def spherical_to_cylindrical(r, theta, phi):
 
 # --- LaTeX --- #
 
-def tex_div(node, ctx, left, right, *_):
+def tex_div(ctx, node, left, right, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
     return r'\frac{{{}}}{{{}}}'.format(left, right)
 
-def tex_mul(node, ctx, left, right, parens_left, parens_right, is_implicit):
+def tex_mul(ctx, node, left, right, parens_left, parens_right, is_implicit):
     left = left.latex(ctx)
     right = right.latex(ctx)
 
@@ -485,26 +485,26 @@ def tex_mul(node, ctx, left, right, parens_left, parens_right, is_implicit):
     else:
         return r'{} \cdot {}'.format(left, right)
 
-def tex_pow(node, ctx, left, right, parens_left, *_):
+def tex_pow(ctx, node, left, right, parens_left, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
     if parens_left:
         left = r'\left( ' + left + r' \right)'
     return r'{}^{{{}}}'.format(left, right)
 
-def tex_abs(node, ctx, x):
+def tex_abs(ctx, node, x):
     x = x.latex(ctx)
     return r'\left| ' + x + r' \right|'
 
-def tex_floor(node, ctx, x):
+def tex_floor(ctx, node, x):
     x = x.latex(ctx)
     return r'\lfloor{' + x + r'}\rfloor'
 
-def tex_ceil(node, ctx, x):
+def tex_ceil(ctx, node, x):
     x = x.latex(ctx)
     return r'\lceil{' + x + r'}\rceil'
 
-def tex_if(node, ctx, condition, if_true, if_false):
+def tex_if(ctx, node, condition, if_true, if_false):
     if isinstance(condition, UnaryOperator) and condition.symbol == '!':
         # Condition is negated, remove double negative.
         # Ex. x = 0 instead of !x != 0
@@ -523,27 +523,27 @@ def tex_if(node, ctx, condition, if_true, if_false):
         if_false.latex(ctx)
     )
 
-def tex_root(node, ctx, x, n=None):
+def tex_root(ctx, node, x, n=None):
     x = x.latex(ctx)
     if n is None:
         return r'\sqrt{' + x + r'}'
     n = n.latex(ctx)
     return r'\sqrt[{}]{{{}}}'.format(n, x)
 
-def tex_log(node, ctx, x, b=None):
+def tex_log(ctx, node, x, b=None):
     if b is None: b = 10
     else: b = b.latex(ctx)
     return r'log_{{{}}}\left( {} \right)'.format(b, x)
 
-def tex_fact(node, ctx, n):
+def tex_fact(ctx, node, n):
     if node.is_left_parenthesized(n):
         return r'\left({{{}}}\right)!'.format(n.latex(ctx))
     return r'{{{}}}!'.format(n.latex(ctx))
 
-def tex_choose(node, ctx, n, k):
+def tex_choose(ctx, node, n, k):
     return '{{{}}}\choose{{{}}}'.format(n.latex(ctx), k.latex(ctx))
 
-def tex_integral(node, ctx, f, a, b):
+def tex_integral(ctx, node, f, a, b):
     with ctx.with_scope():
         if isinstance(f, Declaration):
             definition = f.definition
@@ -571,7 +571,7 @@ def tex_integral(node, ctx, f, a, b):
             body, replace_latex_symbols(differential)
         )
 
-def tex_deriv(node, ctx, f, x, n=_undefined):
+def tex_deriv(ctx, node, f, x, n=_undefined):
     with ctx.with_scope():
         if isinstance(f, Declaration):
             definition = f.definition
@@ -612,10 +612,10 @@ def tex_deriv(node, ctx, f, x, n=_undefined):
 
         return r'{} {{{}}}'.format(frac, body)
 
-def tex_vec(node, ctx, *args):
+def tex_vec(ctx, node, *args):
     return vector(*args).latex(ctx)
 
-def tex_mat(node, ctx, *args):
+def tex_mat(ctx, node, *args):
     def get_column(arg):
         """ Turns a passed argument (Node object) into a column vector. """
         if isinstance(arg, ListNode) or isinstance(arg, Function) and ctx.get(arg.name).func == vector:
@@ -631,16 +631,16 @@ def tex_mat(node, ctx, *args):
     columns = (get_column(arg) for arg in args)
     return matrix(*columns).latex(ctx)
 
-def tex_dot(node, ctx, v, w):
+def tex_dot(ctx, node, v, w):
     return r'{} \cdot {}'.format(v.latex(ctx), w.latex(ctx))
 
-def tex_mag(node, ctx, v):
+def tex_mag(ctx, node, v):
     return r'\left\| {} \right\|'.format(v.latex(ctx))
 
-def tex_mag2(node, ctx, v):
+def tex_mag2(ctx, node, v):
     return r'{{\left\| {} \right\|}}^{{2}}'.format(v.latex(ctx))
 
-def tex_transp(node, ctx, m):
+def tex_transp(ctx, node, m):
     return r'{{{}}}^{{T}}'.format(m.latex(ctx))
 
 

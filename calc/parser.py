@@ -318,17 +318,17 @@ class BinaryOperator(Node):
         return 'BinaryOperator({}, {}, {})'.format(left, self.symbol, right)
 
     def latex(self, ctx):
+        definition = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
+
         left = self.children[0]
         right = self.children[1]
         parens_left = self.is_left_parenthesized(left)
         parens_right = self.is_right_parenthesized(right)
         implicit = ImplicitMultiplication.is_implicit(self, left, right)
 
-        definition = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
-
         if definition.latex_func:
             return definition.latex_func(
-                definition, ctx, left, right,
+                ctx, self, left, right,
                 parens_left, parens_right, implicit
             )
 
@@ -384,13 +384,13 @@ class UnaryOperator(Node):
         return 'UnaryOperator({}, {})'.format(self.symbol, operand)
 
     def latex(self, ctx):
+        definition = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
+
         right = self.children[0]
         parens_right = self.is_right_parenthesized(right)
 
-        definition = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
-
         if definition.latex_func:
-            return definition.latex_func(self, ctx, right, parens_right)
+            return definition.latex_func(ctx, self, right, parens_right)
 
         right = right.latex(ctx)
         if parens_right:
@@ -664,10 +664,10 @@ class Function(Identifier):
         definition.check_inputs(n_inputs)
 
         if definition.latex_func:
-            return definition.latex_func(self, ctx, *self.children)
+            return definition.latex_func(ctx, self, *self.children)
 
         return r'{}\left( {} \right)'.format(
-            replace_latex_symbols(self.name),
+            name,
             ', '.join(node.latex(ctx) for node in self.children)
         )
 
