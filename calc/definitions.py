@@ -462,10 +462,10 @@ class vector(list):
         """ Returns the value in the ith row in the vector """
         return self[r]
 
-    def round(self, places):
+    def __round__(self, n=None):
         """ Round all elements of this vector to `places` """
         for i, x in enumerate(self):
-            self[i] = round(x, places)
+            self[i] = round(x, n)
         return self
 
     def __str__(self):
@@ -612,10 +612,10 @@ class matrix(list):
             return m
         raise LinAlgError('incompatible shape for matrix')
 
-    def round(self, places):
+    def __round__(self, n=None):
         """ Round all elements of this matrix to `places` """
         for row in self:
-            row.round(places)
+            round(row, n)
         return self
 
     def __str__(self):
