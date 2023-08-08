@@ -24,13 +24,43 @@ from .parser import parse, ListNode, Identifier, Declaration, BinaryOperator, Un
 
 __all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_default_context']
 
+
+# --- Helpers --- #
+
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
+
 class undefined:
     def __str__(self): return 'undefined'
     def __repr__(self): return 'undefined'
     def __bool__(self): return False
 _undefined = undefined()
+
+@contextmanager
+def _capture_stdout():
+    """ Capture anything sent to stdout inside a with block and save it to a BytesIO """
+    import sys
+    from io import StringIO
+
+    old_stdout = sys.stdout
+    string = StringIO()
+    try:
+        sys.stdout = string
+        yield string
+    finally:
+        sys.stdout = old_stdout
+
+def _replace_undefined_with_default(f):
+    """ Function wrapper that replaces `_undefined` with the default value for each positional argument. """
+    def wrapper(*args):
+        args = list(args)
+        # number of required positional args
+        offset = f.__code__.co_argcount - len(f.__defaults__)
+        for i in range(offset, len(args)):
+            if args[i] is _undefined:
+                args[i] = f.__defaults__[i - offset]
+        return f(*args)
+    return wrapper
 
 # Setup pyplot style
 if mpl and plt:
@@ -179,20 +209,6 @@ def latex(ctx:Context, expression:Union[Definition, str]):
 
 # --- Function implementations --- #
 
-@contextmanager
-def _capture_stdout():
-    """ Capture anything sent to stdout inside a with block and save it to a BytesIO """
-    import sys
-    from io import StringIO
-
-    old_stdout = sys.stdout
-    string = StringIO()
-    try:
-        sys.stdout = string
-        yield string
-    finally:
-        sys.stdout = old_stdout
-
 def concat(a, b):
     """ Merges two lists. Does not preserve `a`! """
     if type(a) != list: a = [a]
@@ -261,25 +277,14 @@ def tree_(ctx, root):
     output.seek(0)
     return output.read().strip()
 
-def graph_(f, xlow=_undefined, xhigh=_undefined, ylow=_undefined, yhigh=_undefined, n=_undefined):
+@_replace_undefined_with_default
+def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
     """ Graph function for use in a function definition. Use calc.graph() in regular code. """
     if not isinstance(f, Definition):
         raise TypeError("'{}' is not a function".format(f))
 
     if len(f.args) != 1:
         raise TypeError("{} is not 1-dimensional. Function must take 1 input and return 1 output".format(f.signature))
-
-    # Set defaults for parameters
-    if xlow is _undefined:
-        xlow = -10
-    if xhigh is _undefined:
-        xhigh = 10
-    if ylow is _undefined:
-        ylow = None
-    if yhigh is _undefined:
-        yhigh = None
-    if n is _undefined:
-        n = 1000
 
     # Make x and y axis arrays
     x = np.linspace(xlow, xhigh, n)
