@@ -346,6 +346,12 @@ def and_(ctx, a, b):
 def or_(ctx, a, b):
     return a.evaluate(ctx) or b.evaluate(ctx)
 
+def greater(a, b):
+    return int(a > b)
+
+def less(a, b):
+    return int(a < b)
+
 def not_(x):
     return int(x == 0)
 
@@ -675,14 +681,16 @@ def create_default_context():
 
         # Binary Operators
         BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R,                help_text="Concatenation operator"),
-        BinaryOperatorDefinition('+', operator.add,     2, Associativity.L_TO_R,                help_text="Addition operator"),
-        BinaryOperatorDefinition('-', operator.sub,     2, Associativity.L_TO_R,                help_text="Subtraction operator"),
-        BinaryOperatorDefinition('*', operator.mul,     4, Associativity.L_TO_R, latex=tex_mul, help_text="Multiplication operator"),
-        BinaryOperatorDefinition('/', operator.truediv, 4, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
-        BinaryOperatorDefinition('%', operator.mod,     4, Associativity.L_TO_R,                help_text="Remainder operator"),
-        BinaryOperatorDefinition('^', operator.pow,     5, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
-        BinaryOperatorDefinition('&', and_,             4, Associativity.L_TO_R,                help_text="Logical AND operator", manual_eval=True),
-        BinaryOperatorDefinition('|', or_,              2, Associativity.L_TO_R,                help_text="Logical OR operator", manual_eval=True),
+        BinaryOperatorDefinition('|', or_,              1, Associativity.L_TO_R,                help_text="Logical OR operator", manual_eval=True),
+        BinaryOperatorDefinition('&', and_,             2, Associativity.L_TO_R,                help_text="Logical AND operator", manual_eval=True),
+        BinaryOperatorDefinition('>', greater,          3, Associativity.L_TO_R,                help_text="Greater than comparison"),
+        BinaryOperatorDefinition('<', less,             3, Associativity.L_TO_R,                help_text="Less than comparison"),
+        BinaryOperatorDefinition('+', operator.add,     4, Associativity.L_TO_R,                help_text="Addition operator"),
+        BinaryOperatorDefinition('-', operator.sub,     4, Associativity.L_TO_R,                help_text="Subtraction operator"),
+        BinaryOperatorDefinition('*', operator.mul,     5, Associativity.L_TO_R, latex=tex_mul, help_text="Multiplication operator"),
+        BinaryOperatorDefinition('/', operator.truediv, 5, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
+        BinaryOperatorDefinition('%', operator.mod,     5, Associativity.L_TO_R,                help_text="Remainder operator"),
+        BinaryOperatorDefinition('^', operator.pow,     6, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
 
         # Unary operators
         UnaryOperatorDefinition('-', operator.neg, help_text="Unary negation operator"),
