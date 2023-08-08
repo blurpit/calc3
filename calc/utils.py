@@ -374,7 +374,7 @@ def randrange(a, b):
     return random() * (b - a) + a
 
 def sum_(*arr):
-    if len(arr) == 1:
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
         return sum(arr[0])
     return sum(arr)
 
@@ -384,7 +384,7 @@ def len_(*arr):
     return len(arr)
 
 def filter_(f, *arr):
-    if len(arr) == 1 and isinstance(arr[0], list):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
         arr = arr[0]
     return list(filter(f, arr))
 
@@ -398,7 +398,7 @@ def if_(ctx, condition, if_t, if_f):
         return if_f.evaluate(ctx)
 
 def set_(*arr):
-    if len(arr) == 1 and isinstance(arr[0], list):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
         return list(set(arr[0]))
     return list(set(arr))
 
