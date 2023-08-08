@@ -646,11 +646,12 @@ class Function(Identifier):
     def latex(self, ctx):
         definition = ctx.get(self.name)
         n_inputs = len(self.children)
+        name = replace_latex_symbols(self._display_name or self.name)
 
         if n_inputs == 0:
             if isinstance(self.parent, Function):
                 # Function is being passed as an argument to another function. Use only the name.
-                return replace_latex_symbols(definition.name)
+                return name
             elif isinstance(definition, DeclaredFunction):
                 # Use the full declaration.
                 return Declaration(definition, definition.func).latex(ctx)
@@ -692,10 +693,11 @@ class Variable(Identifier):
     def latex(self, ctx):
         definition = ctx.get(self.name)
 
-        if getattr(definition, 'latex_name', None):
-            name = definition.latex_name
-        else:
-            name = replace_latex_symbols(definition.display_name or definition.name)
+        name = replace_latex_symbols(
+            getattr(definition, 'latex_name', None)
+            or self._display_name
+            or self.name
+        )
 
         if self.parent is None:
             if hasattr(definition.func, 'latex'):
