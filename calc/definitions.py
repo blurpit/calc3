@@ -711,6 +711,8 @@ _latex_substitutions = {
     '_': r'\_',
     '(': r'\left(',
     ')': r'\right)',
+    '&': r'\land',
+    '|': r'\vee'
 }
 
 def replace_latex_symbols(s):
