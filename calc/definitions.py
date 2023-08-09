@@ -35,7 +35,7 @@ class DefinitionType(Enum):
 
 
 class Definition:
-    precedence = 3
+    precedence = 5
     associativity = Associativity.R_TO_L
     token_type = DefinitionType.IDENTIFIER
 
@@ -355,7 +355,7 @@ class BinaryOperatorDefinition(Definition):
 
 
 class UnaryOperatorDefinition(Definition):
-    precedence = 5
+    precedence = 7
     associativity = Associativity.R_TO_L
     token_type = DefinitionType.UNARY_OPERATOR
 

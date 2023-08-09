@@ -689,10 +689,10 @@ def create_default_context():
         BinaryOperatorDefinition('<', less,             3, Associativity.L_TO_R,                help_text="Less than comparison"),
         BinaryOperatorDefinition('+', operator.add,     4, Associativity.L_TO_R,                help_text="Addition operator"),
         BinaryOperatorDefinition('-', operator.sub,     4, Associativity.L_TO_R,                help_text="Subtraction operator"),
-        BinaryOperatorDefinition('*', operator.mul,     5, Associativity.L_TO_R, latex=tex_mul, help_text="Multiplication operator"),
-        BinaryOperatorDefinition('/', operator.truediv, 5, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
-        BinaryOperatorDefinition('%', operator.mod,     5, Associativity.L_TO_R,                help_text="Remainder operator"),
-        BinaryOperatorDefinition('^', operator.pow,     6, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
+        BinaryOperatorDefinition('*', operator.mul,     6, Associativity.L_TO_R, latex=tex_mul, help_text="Multiplication operator"),
+        BinaryOperatorDefinition('/', operator.truediv, 6, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
+        BinaryOperatorDefinition('%', operator.mod,     6, Associativity.L_TO_R,                help_text="Remainder operator"),
+        BinaryOperatorDefinition('^', operator.pow,     7, Associativity.R_TO_L, latex=tex_pow, help_text="Exponentiation operator"),
 
         # Unary operators
         UnaryOperatorDefinition('-', operator.neg, help_text="Unary negation operator"),
