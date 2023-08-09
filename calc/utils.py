@@ -713,10 +713,10 @@ def create_default_context():
 
         # Informational Functions
         FunctionDefinition('type',  ['obj'],           type_,  help_text="Returns the type of `obj`"),
-        FunctionDefinition('help',  ['obj'],           help_,  help_text="Provides a description for the given identifier", manual_eval=True),
-        FunctionDefinition('tree',  ['expr'],          tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True),
+        FunctionDefinition('help',  ['obj'],           help_,  help_text="Provides a description for the given identifier", manual_eval=True, precedence=-99),
+        FunctionDefinition('tree',  ['expr'],          tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True, precedence=-99),
         FunctionDefinition('graph', ['f()', '*args'],  graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
-        FunctionDefinition('latex', ['expr', '*eval'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 as a 2nd argument to evaluate before converting to LaTeX.", manual_eval=True),
+        FunctionDefinition('latex', ['expr', '*eval'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 as a 2nd argument to evaluate before converting to LaTeX.", manual_eval=True, precedence=0),
 
         # Logic & Data Structure Functions
         FunctionDefinition('sum',    ['*x'],                        sum_,                  help_text="Sum of `x`"),
