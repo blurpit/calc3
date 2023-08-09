@@ -717,7 +717,4 @@ def replace_latex_symbols(s):
     """
     Replaces all instances of math symbols in a string with their corresponding LaTeX command. Ex.
     ``replace_latex_symbols("test 2π hello") returns "test 2\pi hello". See ``_latex_substitutions`` above. """
-    result = ''
-    for c in s:
-        result += _latex_substitutions.get(c, c)
-    return result
+    return ''.join(_latex_substitutions.get(c, c) for c in s)
