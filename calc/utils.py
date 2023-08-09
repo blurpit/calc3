@@ -20,7 +20,7 @@ except ImportError:
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
-from .parser import parse, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable
+from .parser import parse, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable, Number
 
 __all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_default_context']
 
@@ -271,6 +271,10 @@ def help_(ctx, obj):
             definition.name,
             definition.help_text or "No description provided"
         )
+
+    # Help for numbers
+    if isinstance(obj, Number):
+        return 'help: {}\nNumber literal'.format(obj)
 
     return 'help: {}\nNo description provided'.format(obj)
 
