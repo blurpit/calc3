@@ -704,7 +704,7 @@ class Variable(Identifier):
         return '{}({})'.format(type(self).__name__, self.name)
 
     def latex(self, ctx):
-        definition = ctx.get(self.name)
+        definition = ctx.get(self.name, default=None)
 
         name = replace_latex_symbols(
             getattr(definition, 'latex_name', None)
@@ -712,7 +712,7 @@ class Variable(Identifier):
             or self.name
         )
 
-        if self.parent is None:
+        if definition and self.parent is None:
             if hasattr(definition.func, 'latex'):
                 # Direct variable reference passed, use full declaration
                 return '{} = {}'.format(name, definition.func.latex(ctx))
