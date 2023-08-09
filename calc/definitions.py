@@ -359,7 +359,7 @@ class UnaryOperatorDefinition(Definition):
     associativity = Associativity.R_TO_L
     token_type = DefinitionType.UNARY_OPERATOR
 
-    def __init__(self, symbol, func, precedence=None, latex=None, help_text=None):
+    def __init__(self, symbol, func, precedence=None, latex=None, help_text=None, manual_eval=False):
         """
         Define a unary operator.
 
@@ -376,13 +376,14 @@ class UnaryOperatorDefinition(Definition):
         :param precedence: Operator precedence
         :param latex: Function that converts the operator into LaTeX
         :param help_text: Text shown on help()
+        :param manual_eval: See FunctionDefinition
         """
         if len(symbol) != 1:
             raise ValueError("Invalid unary operator symbol '{}'; "
                              "sybmols must be 1 character".format(symbol))
         super().__init__(
             symbol, 'x', (False,), func,
-            help_text=help_text
+            help_text=help_text, manual_eval=manual_eval
         )
         if precedence is not None:
             self.precedence = precedence
