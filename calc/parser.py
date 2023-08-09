@@ -434,7 +434,7 @@ class Parenthesis(Token):
 
     @classmethod
     def next_expected(cls, root):
-        if isinstance(root, (Identifier, Declaration)) and not root.is_const:
+        if isinstance(root, (Identifier, Declaration)) and not root.is_const and not root.explicit:
             # If the parentheses contained a function then tokens after the parentheses should be treated as a function
             # call (Ex. "(sin)(3)" or "(f(x)=2x)(4)")
             return [BinaryOperator, FunctionCall, EndOfExpression]
@@ -475,22 +475,29 @@ class Parenthesis(Token):
 class FunctionCall(Token):
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
-        if node.n_args == 0:
-            # If the function is 0-arg, remove any empty parentheses
-            if expr[i:i+2] == '()':
-                i += 2
-            return node, i, cls.next_expected(explicit=True)
+        # Explicit empty call. Remove the () and continue.
+        if expr[i:i+2] == '()':
+            node.explicit = True
+            return node, i+2, cls.next_expected(True)
 
-        if expr[i] == '(':
-            # Parse the inside of the parentheses
+        # Implicit call to a 0-arg function. Set as implicit but continue as explicit.
+        elif node.n_args == 0:
+            node.explicit = False
+            return node, i, cls.next_expected(True)
+
+        # Explicit non-empty call. Parse the inside of the parentheses.
+        elif expr[i] == '(':
+            node.explicit = True
             node, i, _ = Parenthesis.parse(ctx, node, i, expr, start, end)
-            return node, i, cls.next_expected(explicit=True)
+            return node, i, cls.next_expected(True)
 
-        # Implicit function call
-        return node, i, cls.next_expected()
+        # Implicit call.
+        else:
+            node.explicit = False
+            return node, i, cls.next_expected(False)
 
     @classmethod
-    def next_expected(cls, explicit=False):
+    def next_expected(cls, explicit):
         if explicit:
             return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
         return [Number, Identifier, EndOfExpression]
@@ -560,6 +567,7 @@ class Identifier(Node):
         self._display_name = getattr(definition, 'display_name', None)
         self.n_args = len(definition.args)
         self.is_const = definition.is_constant
+        self.explicit = False
 
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
@@ -624,9 +632,9 @@ class Function(Identifier):
     def evaluate(self, ctx:Context):
         definition:Definition = ctx.get(self.name, DefinitionType.IDENTIFIER)
 
-        if len(self.children) == 0 and len(definition.args) > 0:
-            # If the function takes arguments but was given none,
-            # return the definition itself.
+        if len(self.children) == 0 and len(definition.args) > 0 and not self.explicit:
+            # If the function takes arguments but was given none, and was not explicitly called, return the definition
+            # itself.
             return definition
 
         # Evaluate arguments & pass it to the function
@@ -636,7 +644,7 @@ class Function(Identifier):
 
     def __str__(self):
         name = self._display_name or self.name
-        if self.n_args > 0 and len(self.children) == 0:
+        if len(self.children) == 0 and self.n_args > 0 and not self.explicit:
             return name
 
         def arg_str(child):
@@ -754,15 +762,13 @@ class ImplicitMultiplication(Token):
         return True
 
 
-class Declaration(Node):
+class Declaration(Identifier):
     """ A declaration of a new identifier. Takes the form of foo(a,b,c)=... """
     precedence = 1
 
-    def __init__(self, definition, root):
-        super().__init__()
-        self.definition = definition
-        self.n_args = len(definition.args)
-        self.is_const = definition.is_constant
+    def __init__(self, definition:DeclaredFunction, root):
+        super().__init__(definition)
+        self.definition:DeclaredFunction = definition
         self.root = root
 
     @classmethod
@@ -893,12 +899,14 @@ class Declaration(Node):
         return [BinaryOperator, FunctionCall, EndOfExpression]
 
     def evaluate(self, ctx:Context):
-        self.definition.bind_context(ctx)
-        if len(self.children) > 0:
-            inputs = self._eval_children(ctx, self.definition)
-            return self.definition(*inputs)
-        else:
+        if len(self.children) == 0 and not self.explicit:
+            # If the function takes arguments but was given none, and was not explicitly called, return the definition
+            # itself.
             return self.definition
+
+        # Evaluate arguments & pass it to the function
+        inputs = self._eval_children(ctx, self.definition)
+        return self.definition(*inputs)
 
     def __str__(self):
         if len(self.children) == 0:
