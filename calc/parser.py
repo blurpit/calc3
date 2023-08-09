@@ -21,6 +21,7 @@ def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
     root = ListNode()
     node = root
     expected = [Parenthesis, UnaryOperator, Number, Declaration, Identifier, EndOfExpression]
+    prev = StartOfExpression
 
     while i < end:
         for cls in expected:
@@ -29,21 +30,22 @@ def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
             if next_expected is not None:
                 # Token sucessfully parsed
                 expected = next_expected
+                prev = cls
                 break
         else:
             # Expected types not found
             expected = ', '.join(map(lambda cls: cls.__name__, expected))
             raise ExpressionSyntaxError(
-                'Expected one of [{}]'
-                .format(expected), expr, i
+                'Expected one of [{}] after {}'
+                .format(expected, prev.__name__), expr, i
             )
 
     # Check for unexpected end of expression
     if EndOfExpression not in expected:
         expected = ', '.join(map(lambda cls: cls.__name__, expected))
         raise ExpressionSyntaxError(
-            'Unexpected end of expression. Expected one of [{}]'
-            .format(expected), expr, i
+            'Unexpected end of expression. Expected one of [{}] after {}'
+            .format(expected, prev.__name__), expr, i
         )
 
     # Empty expression
@@ -260,6 +262,9 @@ class EndOfExpression(Token):
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
         return node, i, None
+
+class StartOfExpression(Token):
+    pass
 
 
 class BinaryOperator(Node):
