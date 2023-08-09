@@ -353,7 +353,7 @@ def less(a, b):
     return int(a < b)
 
 def not_(x):
-    return int(x == 0)
+    return int(not x)
 
 def type_(obj):
     return type(obj).__name__
