@@ -530,10 +530,10 @@ class matrix(list):
         # matrix-vector multiplication
         elif isinstance(other, vector):
             if len(other) == self.shape[1]:
-                v = vector.zero(len(other))
-                for c in range(self.shape[1]):
-                    for r in range(self.shape[0]):
-                        v[r] += other[r] * self[r][c]
+                v = vector.zero(self.shape[0])
+                for r in range(self.shape[0]):
+                    for c in range(self.shape[1]):
+                        v[r] += other[c] * self[r][c]
                 return v
             raise LinAlgError('incompatible shapes for matrix-vector multiplication')
 
