@@ -289,6 +289,9 @@ def tree_(ctx, root):
 @_replace_undefined_with_default
 def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
     """ Graph function for use in a function definition. Use calc.graph() in regular code. """
+    if not mpl or not plt:
+        raise ImportError('matplotlib is required to use graphing')
+
     if not isinstance(f, Definition):
         raise TypeError("'{}' is not a function".format(f))
 
