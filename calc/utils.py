@@ -241,7 +241,7 @@ def help_(ctx, obj):
         if definition.help_text is not None:
             help_text = definition.help_text
         elif not definition.is_constant and definition.func.__doc__ is not None:
-            help_text = definition.func.__doc__
+            help_text = definition.func.__doc__.strip()
         elif isinstance(definition, DeclaredFunction):
             if definition.is_constant:
                 help_text = "User defined constant"
