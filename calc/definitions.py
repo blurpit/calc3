@@ -82,7 +82,7 @@ class Definition:
             for i in range(len(self.args)-1):
                 ctx.add(_argument_definition_wrapper(self.args[i], self.f_args[i], inputs[i]))
             last = len(self.args) - 1
-            ctx.add(_argument_definition_wrapper(self.args[last], self.f_args[last], inputs[last:]))
+            ctx.add(_argument_definition_wrapper(self.args[last], self.f_args[last], list(inputs[last:])))
         else:
             # Match each arg to each input
             for i in range(len(self.args)):
