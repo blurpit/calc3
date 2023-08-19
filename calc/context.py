@@ -1,4 +1,6 @@
+import math
 import pickle
+import sys
 from contextlib import contextmanager
 
 from .definitions import DefinitionType, Definition, DeclaredFunction
@@ -144,14 +146,27 @@ class Context:
         if self.params.rounding is not None:
             if hasattr(result, '__round__'):
                 # Object has its own round function
-                result = round(result, self.params.rounding)
-                if isinstance(result, float) and result % 1 == 0:
-                    result = int(result)
-            elif type(result) == list:
+                    result = round(result, self.params.rounding)
+            elif isinstance(result, list):
                 # Round each element of the list
                 for i, x in enumerate(result):
                     result[i] = self.round_result(x)
+
+        # If the result is too precise, it means there is some ambiguity whether the "true" value has been represented
+        # accuratly. If there's a possibility some information was lost, we should keep it as a float to signify that
+        # possibility, and to avoid strangeness that occurs when converting between ints and imprecise floats.
+        # For example, int(1e24) equals 999999999999999983222784 in python.
+        if isinstance(result, float) and result % 1 == 0 and not self._too_precise(result):
+            result = int(result)
+
         return result
+
+    @staticmethod
+    def _too_precise(n: float):
+        """ Returns true if the whole number part of a float `n` is too precise to fit in its mantissa """
+        m, e = math.frexp(n)
+        dig = sys.float_info.mant_dig
+        return abs(e) > dig
 
     def __len__(self):
         """ Number of scopes in this context """

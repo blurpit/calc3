@@ -511,30 +511,43 @@ class Number(Node):
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
         n = ''
-        decimal = False
+        decimal = -1
+        is_int = True
+
         j = i
         while j < end:
             ch = expr[j]
             if ch.isdigit():
                 # Eat a digit
                 n += ch
-            elif not decimal and ch == '.':
+                # Check if the number is still an integer
+                # Any non-zero digit after a decimal means the number isn't an int
+                if decimal != -1 and ch != '0':
+                    is_int = False
+            elif decimal == -1 and ch == '.':
                 # Eat a decimal point
-                # ensure that only one decimal point exists
+                # Ensure that only one decimal point exists
                 n += ch
-                decimal = True
+                decimal = j - i
             else:
                 break
             j += 1
 
-        # Invalid number.
+        # Not a valid number
         if n == '' or n == '.':
             return node, i, None
 
-        # Convert string to float/int
-        n = float(n)
-        if n % 1 == 0:
-            n = int(n)
+        # If the number is an int with a decimal point, there are excess zeroes, like "3.000"
+        if is_int and decimal != -1:
+            if decimal == 0:
+                # edge case for ".0"
+                n = 0
+            else:
+                # remove excess zeroes
+                n = n[:decimal]
+
+        # Convert string to float or int
+        n = int(n) if is_int else float(n)
 
         num = cls(n)
         node.add_child(num)

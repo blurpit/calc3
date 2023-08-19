@@ -472,11 +472,11 @@ class vector(list):
         """ Returns the value in the ith row in the vector """
         return self[r]
 
-    def __round__(self, n=None):
-        """ Round all elements of this vector to `places` """
-        for i, x in enumerate(self):
-            self[i] = round(x, n)
-        return self
+    # def __round__(self, n=None):
+    #     """ Round all elements of this vector to `places` """
+    #     for i, x in enumerate(self):
+    #         self[i] = round(x, n)
+    #     return self
 
     def __str__(self):
         return '<{}>'.format(', '.join(map(str, self)))
@@ -622,11 +622,11 @@ class matrix(list):
             return m
         raise LinAlgError('incompatible shape for matrix')
 
-    def __round__(self, n=None):
-        """ Round all elements of this matrix to `places` """
-        for row in self:
-            round(row, n)
-        return self
+    # def __round__(self, n=None):
+    #     """ Round all elements of this matrix to `places` """
+    #     for row in self:
+    #         round(row, n)
+    #     return self
 
     def __str__(self):
         return '[{}]'.format(', '.join(map(str, self)))
