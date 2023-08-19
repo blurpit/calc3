@@ -472,11 +472,19 @@ class vector(list):
         """ Returns the value in the ith row in the vector """
         return self[r]
 
-    # def __round__(self, n=None):
-    #     """ Round all elements of this vector to `places` """
-    #     for i, x in enumerate(self):
-    #         self[i] = round(x, n)
-    #     return self
+    def copy(self):
+        """ Return a shallow copy of the vector """
+        v = vector()
+        for x in self:
+            v.append(x)
+        return v
+
+    def __round__(self, n=None):
+        """ Return a rounded copy of the vector """
+        v = self.copy()
+        for i, x in enumerate(self):
+            v[i] = round(x)
+        return v
 
     def __str__(self):
         return '<{}>'.format(', '.join(map(str, self)))
@@ -570,10 +578,6 @@ class matrix(list):
     def __neg__(self):
         return self * -1
 
-    def copy(self):
-        """ Make a copy of the matrix (row vectors are copied but not deep copied) """
-        return matrix(*(row.copy() for row in self))
-
     def transp(self):
         """ Returns the transpose of the matrix """
         return matrix(*(self.col(c) for c in range(self.shape[1])))
@@ -622,11 +626,20 @@ class matrix(list):
             return m
         raise LinAlgError('incompatible shape for matrix')
 
-    # def __round__(self, n=None):
-    #     """ Round all elements of this matrix to `places` """
-    #     for row in self:
-    #         round(row, n)
-    #     return self
+    def copy(self):
+        """ Return a copy of the matrix (row vectors are shallow copied) """
+        m = matrix()
+        m.shape = self.shape.copy()
+        for row in self:
+            m.append(row.copy())
+        return m
+
+    def __round__(self, n=None):
+        """ Round all elements of this matrix to `places` """
+        m = self.copy()
+        for i, row in enumerate(self):
+            m[i] = round(row)
+        return m
 
     def __str__(self):
         return '[{}]'.format(', '.join(map(str, self)))

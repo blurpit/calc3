@@ -149,6 +149,7 @@ class Context:
                     result = round(result, self.params.rounding)
             elif isinstance(result, list):
                 # Round each element of the list
+                result = result.copy()
                 for i, x in enumerate(result):
                     result[i] = self.round_result(x)
 
