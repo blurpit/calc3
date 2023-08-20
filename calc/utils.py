@@ -349,6 +349,13 @@ def latex_(ctx, root, do_eval=None):
     root.parent = parent
     return result
 
+def del_(ctx, obj):
+    if not isinstance(obj, Identifier):
+        raise TypeError('`obj` must be an identifier')
+
+    ctx.remove(obj.name, DefinitionType.IDENTIFIER)
+    return 1
+
 def and_(ctx, a, b):
     return a.evaluate(ctx) and b.evaluate(ctx)
 
@@ -720,6 +727,7 @@ def create_default_context():
         FunctionDefinition('tree',  ['expr'],          tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True, precedence=-99),
         FunctionDefinition('graph', ['f()', '*args'],  graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
         FunctionDefinition('latex', ['expr', '*eval'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 as a 2nd argument to evaluate before converting to LaTeX.", manual_eval=True, precedence=0),
+        FunctionDefinition('del',   ['obj'],           del_,   help_text="Delete an identifier", manual_eval=True),
 
         # Logic & Data Structure Functions
         FunctionDefinition('sum',    ['*x'],                        sum_,                  help_text="Sum of `x`"),

@@ -89,6 +89,23 @@ class Context:
             result.update(scope.keys())
         return result
 
+    def remove(self, name:str, token_type:DefinitionType):
+        """ Removes and returns an item from the context given the name. If the name appears more than
+            once in the context, removes the first occurance moving down from the top of the stack.
+            Raises a ContextError if the name is not found or is in the global scope. """
+        key = (name, token_type)
+        for ctx in reversed(self.stack[1:]):
+            result = ctx.pop(key, None)
+            if result is not None:
+                return result
+
+        if key in self.stack[0]:
+            # name is in the global scope
+            raise ContextError("Cannot override '{}' from global scope".format(name))
+        else:
+            # name is not in the context
+            raise ContextError("'{}' is undefined.".format(name))
+
     def push_scope(self):
         """ Push a new scope to the stack """
         self.stack.append({})
