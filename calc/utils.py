@@ -131,7 +131,7 @@ def tree(ctx:Context, expression:Union[Definition, str]):
     print(msg)
     t.show()
 
-def console(ctx:Context, show_time=False, show_tree=False):
+def console(ctx:Context, *, show_time=False, show_tree=False):
     """ Start an interactive console """
     # noinspection PyUnresolvedReferences
     from colorama import Fore, Style, just_fix_windows_console
