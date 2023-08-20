@@ -13,9 +13,9 @@ class Params:
     # Number of decimal places to round numbers to after evaluating. Applies
     # to floats, vectors, & matrices.
     #  - None (default behavior) means no rounding, leave results as is. This
-    #    may result in lots of floating point precision errors.
-    #  - If rounding is enabled, floats with no decimal component will be converted
-    #    into ints.
+    #    may result in floating point precision errors.
+    #  - Floats with no decimal component will still be converted to ints even
+    #    if rounding is disabled.
     rounding = None
 
     # If False, identifiers that don't exist in the context at parse time
