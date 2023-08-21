@@ -20,7 +20,8 @@ except ImportError:
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
-from .parser import parse, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable, Number
+from .parser import parse, Node, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable, \
+    Number
 
 __all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_default_context']
 
@@ -80,8 +81,13 @@ if mpl and plt:
 
 # --- Calc base --- #
 
-def evaluate(ctx:Context, expression:str):
+def evaluate(ctx:Context, expression):
     """ Evaluate an expression """
+    if isinstance(expression, Node):
+        return expression.evaluate(ctx)
+    elif not isinstance(expression, str):
+        return expression
+
     expression = re.sub(r'\s+', '', expression)
     root = parse(ctx, expression)
 
@@ -347,8 +353,8 @@ def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
     return fig
 
 def latex_(ctx, root, do_eval=None):
-    if do_eval and do_eval.evaluate(ctx):
-        result = root.evaluate(ctx)
+    if do_eval and evaluate(ctx, do_eval):
+        result = evaluate(ctx, root)
         result = ctx.round_result(result)
         def to_latex(obj):
             if hasattr(obj, 'latex'):
@@ -373,10 +379,10 @@ def del_(ctx, obj):
     return 1
 
 def and_(ctx, a, b):
-    return a.evaluate(ctx) and b.evaluate(ctx)
+    return evaluate(ctx, a) and evaluate(ctx, b)
 
 def or_(ctx, a, b):
-    return a.evaluate(ctx) or b.evaluate(ctx)
+    return evaluate(ctx, a) or evaluate(ctx, b)
 
 def greater(a, b):
     return int(a > b)
@@ -438,10 +444,10 @@ def range_(start, stop):
     return list(range(start, stop))
 
 def if_(ctx, condition, if_t, if_f):
-    if condition.evaluate(ctx):
-        return if_t.evaluate(ctx)
+    if evaluate(ctx, condition):
+        return evaluate(ctx, if_t)
     else:
-        return if_f.evaluate(ctx)
+        return evaluate(ctx, if_f)
 
 def set_(*arr):
     if len(arr) == 1 and hasattr(arr[0], '__iter__'):
@@ -457,7 +463,9 @@ def shape(M):
         return [1, 1]
 
 def print_matrix(ctx, m, align=0.5):
-    m = m.evaluate(ctx)
+    m = evaluate(ctx, m)
+    align = evaluate(ctx, align)
+
     if not isinstance(m, matrix):
         raise TypeError('`M` must be a matrix')
     if not isinstance(align, (int, float)):

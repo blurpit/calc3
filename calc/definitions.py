@@ -49,12 +49,30 @@ class Definition:
         self.display_name = kwargs.get('display_name', None)
         self.help_text = kwargs.get('help_text', None)
         self.manual_eval = kwargs.get('manual_eval', False)
+        self.ctx = None
+
+    def copy(self):
+        """ Make a shallow copy of this definition object """
+        return copy(self)
+
+    def bind_context(self, ctx):
+        """
+        Bind this definition to a context. A context must be bound in order to use __call__ if manual_eval is true, or
+        if this definition is a DeclaredFunction. This is done automatically when the definition is added to a context.
+
+        If a definition is already bound to a context, and is added to a different context using ``ctx.add()`` or
+        ``ctx.set()``, a shallow copy is made and bound to the new context. So, if a function ``f`` is bound to
+        ``ctx1``, then it will still be bound to ``ctx1`` after ``ctx2.add(f)`` is used. However, ``ctx2.get('f')``
+        will return an identical Definition that is bound to ``ctx2``.
+
+        If a definition is unbound, a copy will not be made when adding it to the context. Use ``.bind_context(None)``
+        to unbind.
+
+        :param ctx: hello
+        """
+        self.ctx = ctx
 
     def check_inputs(self, n_inputs):
-        if self.manual_eval:
-            # manual eval funcs have an extra ctx input
-            n_inputs -= 1
-
         if len(self.args) != n_inputs and \
                 (not self.star_arg or n_inputs < len(self.args) - 1):
             raise TypeError('{} expected {} argument{}, got {}'.format(
@@ -67,6 +85,8 @@ class Definition:
     def __call__(self, *inputs):
         if self.is_constant:
             return self.func
+        elif self.manual_eval:
+            return self.func(self.ctx, *inputs)
         else:
             return self.func(*inputs)
 
@@ -75,18 +95,18 @@ class Definition:
         if inputs is None:
             # Unknown signature; match each arg to None
             for i in range(len(self.args)):
-                ctx.add(_argument_definition_wrapper(self.args[i], self.f_args[i], None))
+                ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], None))
         elif self.star_arg:
             # Match each arg until the star arg, then pass the star arg as a list of the
             # remaining inputs
             for i in range(len(self.args)-1):
-                ctx.add(_argument_definition_wrapper(self.args[i], self.f_args[i], inputs[i]))
+                ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], inputs[i]))
             last = len(self.args) - 1
-            ctx.add(_argument_definition_wrapper(self.args[last], False, list(inputs[last:])))
+            ctx.add(_wrap_argument_definition(self.args[last], False, list(inputs[last:])))
         else:
             # Match each arg to each input
             for i in range(len(self.args)):
-                ctx.add(_argument_definition_wrapper(self.args[i], self.f_args[i], inputs[i]))
+                ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], inputs[i]))
 
     @property
     def signature(self):
@@ -126,20 +146,22 @@ class Definition:
             repr(self.func),
         )
 
-def _argument_definition_wrapper(name, is_func, value):
+def _wrap_argument_definition(arg_name, is_f_arg, value):
     """
-    Returns a Definition for functions whose full signature is unknown. This is adde to the context at parse-time so
-    the parser knows a given identifier exists before knowing its exact definition. Kind of like a forward declaration
-    in C. Kind of.
+    Wraps a given value in a new Definition with a given argument name. This is used to associate values passed into
+    a function with the argument it was passed in to. For example if "pi/2" is passed into sqrt(x), then a new
+    Definition is returned with a name "x" and value "pi/2". The parser uses this to declare that an identifier
+    will exist at evaluation time.
 
-    :param name: Identifier name
-    :param is_func: Whether this identifier takes more than 1 or more inputs
+    :param arg_name: Argument name
+    :param is_f_arg: Whether this argument is a function
     :param value: Value of the identifier (or None if unknown)
+    :return: A Definition object with a name equal to arg_name
     """
-    if is_func:
-        return Definition(name, ('...',), (False,), value, star_arg=True)
+    if is_f_arg:
+        return Definition(arg_name, ('...',), (False,), value, star_arg=True)
     else:
-        return Definition(name, (), (), value)
+        return Definition(arg_name, (), (), value)
 
 
 class FunctionDefinition(Definition):
@@ -175,9 +197,10 @@ class FunctionDefinition(Definition):
 
         If `manual_eval` is True, inputs passed into `func` will not be evaluated, and instead `func` will be passed
         `ctx`, `*inputs`. The inputs are the ``Node`` objects representing the inputs to the function. Use
-        ``node.evaluate(ctx)`` to evaluate them. This can be useful for functions that should not evaluate all inputs
-        beforehand, such as ``if(condition, if_t, if_f)``, where if the condition is true, ``if_f`` should not be
-        evaluated.
+        ``calc.evaluate(ctx, node)`` to evaluate them. This can be useful for functions that should not evaluate all
+        inputs beforehand, such as ``if(condition, if_t, if_f)``, where if the condition is true, ``if_f`` should not be
+        evaluated. NOTE: Sometimes the inputs will still be evaluated beforehand, such as when the function is passed as
+        an argument to another function then called.
 
         :param name: Function name
         :param args: Function arguments
@@ -261,24 +284,7 @@ class DeclaredFunction(FunctionDefinition):
     """
     def __init__(self, name, args, is_const):
         super().__init__(name, args, None)
-        self.ctx = None
         self._is_const = is_const and len(args) == 0
-
-    def copy(self):
-        """ Make a shallow copy of this definition object """
-        return copy(self)
-
-    def bind_context(self, ctx):
-        """
-        Bind this function to a context. A context must be bound in order to use __call__. This is done automatically
-        when the DeclaredFunction is returned from ``calc.evaluate()``.
-
-        If a DeclaredFunction is added to a context using ``ctx.add()``, a shallow copy is added to the context and
-        bound to it. So, if a DeclaredFunction ``f`` is bound to ``ctx1``, then it will still be bound to ``ctx1``
-        after ``ctx2.add(f)`` is used. However, ``ctx2.get('f')`` will return a duplicate DeclaredFunction that is
-        bound to ``ctx2``.
-        """
-        self.ctx = ctx
 
     def __call__(self, *inputs):
         """ Evaluate the function. A context must be binded to use this. """

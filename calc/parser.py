@@ -124,7 +124,6 @@ class Node(Token):
     def _eval_children(self, ctx:Context, definition:Definition):
         """ Evaluate each child node and yield the results """
         if definition.manual_eval:
-            yield ctx
             for child in self.children:
                 yield child
         else:
@@ -295,7 +294,7 @@ class BinaryOperator(Node):
 
     def evaluate(self, ctx):
         op = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
-        return op.func(*self._eval_children(ctx, op))
+        return op(*self._eval_children(ctx, op))
 
     def __str__(self):
         left = self.children[0]
@@ -376,7 +375,7 @@ class UnaryOperator(Node):
 
     def evaluate(self, ctx:Context):
         op = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
-        return op.func(*self._eval_children(ctx, op))
+        return op(*self._eval_children(ctx, op))
 
     def __str__(self):
         right = self.children[0]
@@ -702,9 +701,6 @@ class Function(Identifier):
                 # Use the function signature
                 return replace_latex_symbols(definition.signature)
 
-        if definition.manual_eval:
-            # add phantom `ctx` input for manual_eval functions
-            n_inputs += 1
         definition.check_inputs(n_inputs)
 
         if definition.latex_func:

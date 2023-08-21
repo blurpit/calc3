@@ -33,12 +33,12 @@ class Context:
         self.stack = [{}]
         self.ans = 0
 
-    def add(self, *items:Definition, override_global=False):
+    def add(self, *definitions:Definition, override_global=False):
         """ Add a collection of Definitions to the top scope in the context. If `override_global`
             is False, modifying the global scope or overriding items from the global scope will
             raise a ContextError. """
-        for item in items:
-            self.set(item.name, item.token_type, item, override_global)
+        for definition in definitions:
+            self.set(definition.name, definition.token_type, definition, override_global)
 
     def get(self, name:str, token_type:DefinitionType=DefinitionType.IDENTIFIER, default=ContextError):
         """ Get an item from the context. Items higher on the scope stack will be returned first. """
@@ -66,7 +66,7 @@ class Context:
                 return True
         return False
 
-    def set(self, name:str, token_type:DefinitionType, val:Definition, override_global=False):
+    def set(self, name:str, token_type:DefinitionType, definition:Definition, override_global=False):
         """ Set an item in the context directly. In most cases you should use ``add()`` instead. """
         if not override_global:
             if len(self.stack) < 2:
@@ -74,14 +74,12 @@ class Context:
             elif (name, token_type) in self.stack[0]:
                 raise ContextError("Cannot override '{}' from global scope".format(name))
 
-        if isinstance(val, DeclaredFunction):
-            # If adding a DeclaredFunction, make a duplicate of the definition and
-            # bind it to this context
-            if val.ctx is not None and val.ctx is not self:
-                val = val.copy()
-            val.bind_context(self)
+        # If the definition is bound to another context, make a duplicate and bind it to this context
+        if definition.ctx is not None and definition.ctx is not self:
+            definition = definition.copy()
+        definition.bind_context(self)
 
-        self.stack[-1][(name, token_type)] = val
+        self.stack[-1][(name, token_type)] = definition
 
     def keys(self):
         result = set()
