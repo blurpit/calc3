@@ -197,3 +197,6 @@ class Context:
                 s += '\t'*i + str(item) + '\n'
         s += ')'
         return s
+
+    def __repr__(self):
+        return '<Context length={}>'.format(len(self.stack))

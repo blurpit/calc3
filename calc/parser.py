@@ -249,7 +249,7 @@ class ListNode(Node):
         return ', '.join(map(str, self.children))
 
     def __repr__(self):
-        return '{}{}'.format(type(self).__name__, repr(self.children))
+        return '<{} children={}>'.format(type(self).__name__, len(self.children))
 
     def latex(self, ctx):
         return ',\, '.join(node.latex(ctx) for node in self.children)
@@ -318,9 +318,11 @@ class BinaryOperator(Node):
             return left + self.symbol + right
 
     def __repr__(self):
-        left = repr(self.children[0]) if len(self.children) > 0 else '?'
-        right = repr(self.children[1]) if len(self.children) > 1 else '?'
-        return 'BinaryOperator({}, {}, {})'.format(left, self.symbol, right)
+        return '<{} symbol={}, children={}>'.format(
+            type(self).__name__,
+            repr(self.symbol),
+            len(self.children)
+        )
 
     def latex(self, ctx):
         definition = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
@@ -385,8 +387,11 @@ class UnaryOperator(Node):
         return self.symbol + str(right)
 
     def __repr__(self):
-        operand = repr(self.children[0]) if len(self.children) > 0 else '?'
-        return 'UnaryOperator({}, {})'.format(self.symbol, operand)
+        return '<{} symbol={}, children={}>'.format(
+            type(self).__name__,
+            repr(self.symbol),
+            len(self.children)
+        )
 
     def latex(self, ctx):
         definition = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
@@ -560,7 +565,11 @@ class Number(Node):
         return self.value
 
     def __repr__(self):
-        return 'Number({})'.format(self.value)
+        return '<{} n={}, children={}>'.format(
+            type(self).__name__,
+            repr(self.value),
+            len(self.children)
+        )
 
     def __str__(self):
         return str(self.value)
@@ -627,9 +636,7 @@ class Identifier(Node):
         raise NotImplemented
 
     def __repr__(self):
-        args = [repr(self.children[i]) if i < len(self.children) else '?'
-                for i in range(self.n_args)]
-        return '{}({}, {})'.format(type(self).__name__, self.name, ', '.join(args))
+        raise NotImplemented
 
     def latex(self, ctx):
         raise NotImplemented
@@ -668,6 +675,16 @@ class Function(Identifier):
 
         args = ', '.join(map(arg_str, self.children))
         return '{}({})'.format(name, args)
+
+    def __repr__(self):
+        return '<{} name={}, n_args={}, is_const={}, explicit={}, children={}>'.format(
+            type(self).__name__,
+            repr(self.name),
+            self.n_args,
+            self.is_const,
+            self.explicit,
+            len(self.children)
+        )
 
     def latex(self, ctx):
         definition = ctx.get(self.name)
@@ -711,7 +728,11 @@ class Variable(Identifier):
         return self._display_name or self.name
 
     def __repr__(self):
-        return '{}({})'.format(type(self).__name__, self.name)
+        return '<{} name={}, children={}>'.format(
+            type(self).__name__,
+            repr(self.name),
+            len(self.children)
+        )
 
     def _tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.name)
@@ -929,11 +950,10 @@ class Declaration(Identifier):
         return '({})({})'.format(self.definition, args)
 
     def __repr__(self):
-        return '{}({}, [{}], {})'.format(
+        return '<{} definition={}, children={}>'.format(
             type(self).__name__,
-            self.definition.name,
-            ', '.join(self.definition.args),
-            repr(self.root)
+            repr(self.definition),
+            len(self.children)
         )
 
     def latex(self, ctx):

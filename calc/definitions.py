@@ -47,8 +47,8 @@ class Definition:
         self.func = func
         self.star_arg = kwargs.get('star_arg', False)
         self.display_name = kwargs.get('display_name', None)
-        self.manual_eval = kwargs.get('manual_eval', False)
         self.help_text = kwargs.get('help_text', None)
+        self.manual_eval = kwargs.get('manual_eval', False)
 
     def check_inputs(self, n_inputs):
         if self.manual_eval:
@@ -94,17 +94,9 @@ class Definition:
         if self.is_constant:
             return self.display_name or self.name
 
-        def argname(i):
-            name = self.args[i]
-            if self.star_arg and i == len(self.args)-1:
-                name = '*' + name
-            if self.f_args[i]:
-                name = name + '()'
-            return name
-
         return '{}({})'.format(
             self.display_name or self.name,
-            ', '.join(map(argname, range(len(self.args))))
+            ', '.join(self._args_list())
         )
 
     @property
@@ -112,11 +104,27 @@ class Definition:
         """ Constant functions take 0 arguments and their `func` is a value instead of a callable. """
         return len(self.args) == 0 and not callable(self.func)
 
+    def _args_list(self):
+        """ Returns a list of pretty arg names, with () added for f_args and * added for star args. """
+        args = []
+        for i, name in enumerate(self.args):
+            if self.f_args[i]:
+                name += '()'
+            args.append(name)
+        if self.star_arg:
+            args[-1] = '*' + args[-1]
+        return args
+
     def __str__(self):
         return self.signature
 
     def __repr__(self):
-        return '{}({}, {})'.format(self.__class__.__name__, self.name, self.args)
+        return '<{} name={}, args={}, func={}>'.format(
+            type(self).__name__,
+            repr(self.name),
+            repr(self._args_list()),
+            repr(self.func),
+        )
 
 def _argument_definition_wrapper(name, is_func, value):
     """
@@ -353,6 +361,14 @@ class BinaryOperatorDefinition(Definition):
         name = self.display_name or self.name
         return 'a ' + name + ' b'
 
+    def __repr__(self):
+        return '<{} symbol={}, precedence={}, func={}>'.format(
+            type(self).__name__,
+            repr(self.name),
+            self.precedence,
+            repr(self.func)
+        )
+
 
 class UnaryOperatorDefinition(Definition):
     precedence = 7
@@ -391,6 +407,13 @@ class UnaryOperatorDefinition(Definition):
 
     def __str__(self):
         return self.name + 'x'
+
+    def __repr__(self):
+        return '<{} symbol={}, func={}>'.format(
+            type(self).__name__,
+            repr(self.name),
+            repr(self.func)
+        )
 
 
 class vector(list):
