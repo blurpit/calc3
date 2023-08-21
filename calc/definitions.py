@@ -506,7 +506,10 @@ class vector(list):
         """ Return a rounded copy of the vector """
         v = self.copy()
         for i, x in enumerate(self):
-            v[i] = round(x)
+            x = round(x, n)
+            if x % 1 == 0:
+                x = int(x)
+            v[i] = x
         return v
 
     def __str__(self):
@@ -661,7 +664,7 @@ class matrix(list):
         """ Round all elements of this matrix to `places` """
         m = self.copy()
         for i, row in enumerate(self):
-            m[i] = round(row)
+            m[i] = round(row, n)
         return m
 
     def __str__(self):

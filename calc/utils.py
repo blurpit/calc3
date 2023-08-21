@@ -456,6 +456,54 @@ def shape(M):
     else:
         return [1, 1]
 
+def print_matrix(ctx, m, align=0.5):
+    m = m.evaluate(ctx)
+    if not isinstance(m, matrix):
+        raise TypeError('`M` must be a matrix')
+    if not isinstance(align, (int, float)):
+        raise TypeError('`align` must be a number')
+
+    align = max(0.0, min(align, 1.0))
+    m = ctx.round_result(m)
+
+    # find lengths of each column
+    col_lens = [0] * m.shape[1]
+    for row in m:
+        for i, x in enumerate(row):
+            col_lens[i] = max(col_lens[i], len(str(x)))
+
+    lines = []
+    for r, row in enumerate(m):
+        line = []
+        for c, x in enumerate(row):
+            s = str(x)
+            space = col_lens[c] - len(s)
+            l_sp = math.ceil(space * align)
+            r_sp = math.floor(space * (1 - align))
+            s = ' ' * l_sp + s + ' ' * r_sp
+            line.append(s)
+
+        if len(m) == 1:
+            # 1-row matrix
+            line.insert(0, '[')
+            line.append(']')
+        elif r == 0:
+            # top row
+            line.insert(0, '⎡')
+            line.append('⎤')
+        elif r < len(m) - 1:
+            # middle row
+            line.insert(0, '⎢')
+            line.append('⎥')
+        else:
+            # bottom row
+            line.insert(0, '⎣')
+            line.append('⎦')
+
+        lines.append('  '.join(line))
+
+    return '\n'.join(lines)
+
 def integrate(f, a, b):
     return sp.integrate.quad(f, a, b)[0]
 
@@ -799,20 +847,21 @@ def create_default_context():
         FunctionDefinition('nderiv', ['f()', 'x', 'n'], differentiate, latex=tex_deriv,    help_text="`n`th derivative of `f(x)dx` evaluated at `x`"),
 
         # Vectors & Matrices
-        FunctionDefinition('v',      ['*x'],    vector,        latex=tex_vec,    help_text="Creates a vector"),
-        FunctionDefinition('dot',    'vw',      vector.dot,    latex=tex_dot,    help_text="Vector dot product"),
-        FunctionDefinition('mag',    'v',       vector.mag,    latex=tex_mag,    help_text="Vector magnitude"),
-        FunctionDefinition('mag2',   'v',       vector.mag2,   latex=tex_mag2,   help_text="Vector magnitude squared"),
-        FunctionDefinition('norm',   'v',       vector.norm,                     help_text="Normalizes `v`"),
-        FunctionDefinition('zero',   'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
-        FunctionDefinition('mat',    ['*rows'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a list of row vectors"),
-        FunctionDefinition('I',      'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
-        FunctionDefinition('shape',  'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
-        FunctionDefinition('mrow',   'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
-        FunctionDefinition('mcol',   'Mc',      matrix.col,                      help_text="`c`th column vector of `M`"),
-        FunctionDefinition('mpos',   'Mrc',     matrix.pos,                      help_text="Value at row `r` and column `c` of `M`"),
-        FunctionDefinition('transp', 'M',       matrix.transp, latex=tex_transp, help_text="Transpose of matrix `M`"),
-        FunctionDefinition('vi',     'vi',      vector.i,                        help_text="Value at index `i` of `v`"),
+        FunctionDefinition('v',        ['*x'],    vector,        latex=tex_vec,    help_text="Creates a vector"),
+        FunctionDefinition('dot',      'vw',      vector.dot,    latex=tex_dot,    help_text="Vector dot product"),
+        FunctionDefinition('mag',      'v',       vector.mag,    latex=tex_mag,    help_text="Vector magnitude"),
+        FunctionDefinition('mag2',     'v',       vector.mag2,   latex=tex_mag2,   help_text="Vector magnitude squared"),
+        FunctionDefinition('norm',     'v',       vector.norm,                     help_text="Normalizes `v`"),
+        FunctionDefinition('zero',     'd',       vector.zero,                     help_text="`d` dimensional zero vector"),
+        FunctionDefinition('mat',      ['*rows'], matrix,        latex=tex_mat,    help_text="Creates a matrix from a list of row vectors"),
+        FunctionDefinition('I',        'n',       matrix.id,                       help_text="`n` by `n` identity matrix"),
+        FunctionDefinition('shape',    'M',       shape,                           help_text="Shape of a vector or matrix `M`"),
+        FunctionDefinition('mrow',     'Mr',      matrix.row,                      help_text="`r`th row vector of `M`"),
+        FunctionDefinition('mcol',     'Mc',      matrix.col,                      help_text="`c`th column vector of `M`"),
+        FunctionDefinition('mpos',     'Mrc',     matrix.pos,                      help_text="Value at row `r` and column `c` of `M`"),
+        FunctionDefinition('transp',   'M',       matrix.transp, latex=tex_transp, help_text="Transpose of matrix `M`"),
+        FunctionDefinition('printmat', 'M',       print_matrix,                    help_text="Pretty print a matrix `M`", manual_eval=True),
+        FunctionDefinition('vi',       'vi',      vector.i,                        help_text="Value at index `i` of `v`"),
 
         # Linear Algebra
         FunctionDefinition('det',    'M', det,    help_text="Determinant of `M`"),
