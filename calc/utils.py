@@ -229,32 +229,40 @@ def concat_all(*args):
 def help_(ctx, obj):
     # Help for identifiers
     if isinstance(obj, Identifier):
-        definition = ctx.get(obj.name)
+        if isinstance(obj, Declaration):
+            # Definition is inside the declaration
+            definition = obj.definition
+        else:
+            # Definition is inside the context
+            definition = ctx.get(obj.name)
 
         if definition.is_constant:
+            # Show full definition for constants (name + value)
             signature = '{} = {}'.format(definition.signature, definition.func)
         elif isinstance(definition, DeclaredFunction):
+            # Show full definition for declared functions (signature + body)
             signature = str(definition)
         else:
+            # Show only the signature for generic FunctionDefinitions
             signature = definition.signature
 
         if definition.help_text is not None:
+            # Use help text given by the definition
             help_text = definition.help_text
         elif not definition.is_constant and definition.func.__doc__ is not None:
+            # Use the function's documentation as help text
             help_text = definition.func.__doc__.strip()
         elif isinstance(definition, DeclaredFunction):
+            # Generic help text for declared functions
             if definition.is_constant:
                 help_text = "User defined constant"
             else:
                 help_text = "User defined function"
         else:
+            # FunctionDefinition with no help text
             help_text = "No description provided"
 
         return 'help: {}\n{}'.format(signature, help_text)
-
-    # Help for declared functions
-    if isinstance(obj, Declaration):
-        return 'help: {}\nUser defined function or constant'.format(str(obj))
 
     # Help for binary operators
     if isinstance(obj, BinaryOperator):
@@ -276,6 +284,7 @@ def help_(ctx, obj):
     if isinstance(obj, Number):
         return 'help: {}\nNumber literal'.format(obj)
 
+    # Everything else
     return 'help: {}\nNo description provided'.format(obj)
 
 def tree_(ctx, root):
