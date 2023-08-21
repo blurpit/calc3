@@ -227,6 +227,13 @@ def concat_all(*args):
     return result
 
 def help_(ctx, obj):
+    # Help for ListNode
+    if isinstance(obj, ListNode):
+        if len(obj.children) == 0:
+            return 'help:\nEmpty list'
+        else:
+            return 'help: {}\nList of {} elements'.format(str(obj), len(obj.children))
+
     # Help for identifiers
     if isinstance(obj, Identifier):
         if isinstance(obj, Declaration):
