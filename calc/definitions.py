@@ -512,10 +512,11 @@ class vector(list):
         """ Return a rounded copy of the vector """
         v = self.copy()
         for i, x in enumerate(self):
-            x = round(x, n)
-            if x % 1 == 0:
-                x = int(x)
-            v[i] = x
+            if hasattr(x, '__round__'):
+                x = round(x, n)
+                if x % 1 == 0:
+                    x = int(x)
+                v[i] = x
         return v
 
     def __str__(self):
