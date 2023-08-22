@@ -149,6 +149,10 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
     def errprint(exc):
         """ Print an exception """
         cprint('{}: {}'.format(type(exc).__name__, str(exc)), Fore.RED)
+    def list_to_str(lis):
+        if type(lis) == list:
+            return '(' + ', '.join(map(list_to_str, lis)) + ')'
+        return str(lis)
 
     with ctx.with_scope():
         while True:
@@ -170,7 +174,7 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
                         ctx.add(result)
                         cprint(f'Added {result.signature} to context.', Fore.YELLOW)
                     elif type(result) == list:
-                        result = ', '.join(map(str, result))
+                        result = ', '.join(map(list_to_str, result))
                     elif mpl and plt and isinstance(result, plt.Figure):
                         result.show()
                         continue
