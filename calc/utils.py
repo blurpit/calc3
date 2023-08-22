@@ -19,7 +19,7 @@ except ImportError:
 
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
-    BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, replace_latex_symbols
+    BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, spread, replace_latex_symbols
 from .parser import parse, Node, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable, \
     Number
 
@@ -95,6 +95,9 @@ def evaluate(ctx:Context, expression):
     if isinstance(answer, DeclaredFunction) and answer.is_constant:
         # Evaluate and cache constant values asap
         answer()
+    if isinstance(answer, spread):
+        # Get rid of spread operators
+        answer = list(answer)
 
     answer = ctx.round_result(answer)
     ctx.ans = answer
@@ -149,10 +152,13 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
     def errprint(exc):
         """ Print an exception """
         cprint('{}: {}'.format(type(exc).__name__, str(exc)), Fore.RED)
-    def list_to_str(lis):
-        if type(lis) == list:
-            return '(' + ', '.join(map(list_to_str, lis)) + ')'
-        return str(lis)
+    def to_str(x, depth=0):
+        if type(x) == list:
+            s = ', '.join(to_str(x2, depth+1) for x2 in x)
+            if depth > 0:
+                s = '(' + s + ')'
+            return s
+        return str(x)
 
     with ctx.with_scope():
         while True:
@@ -173,13 +179,11 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
                     if isinstance(result, DeclaredFunction):
                         ctx.add(result)
                         cprint(f'Added {result.signature} to context.', Fore.YELLOW)
-                    elif type(result) == list:
-                        result = ', '.join(map(list_to_str, result))
                     elif mpl and plt and isinstance(result, plt.Figure):
                         result.show()
                         continue
 
-                    cprint(str(result), Style.BRIGHT)
+                    cprint(to_str(result), Style.BRIGHT)
 
                     if show_time:
                         cprint('{:.5f}ms'.format(t*1000), Style.DIM)
@@ -787,6 +791,7 @@ def create_default_context():
         # Unary operators
         UnaryOperatorDefinition('-', operator.neg, help_text="Unary negation operator"),
         UnaryOperatorDefinition('!', not_,         help_text="Logical NOT operator"),
+        UnaryOperatorDefinition('*', spread,       help_text="Unary spread operator. Use it to pass a collection of values as separate arguments."),
 
         # Basic Functions
         FunctionDefinition('abs',   'x', abs,             latex=tex_abs,   help_text="Absolute value of `x`"),

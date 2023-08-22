@@ -1,6 +1,6 @@
 from .context import Context
 from .definitions import is_identifier, Associativity, DefinitionType, Definition, BinaryOperatorDefinition, \
-    UnaryOperatorDefinition, VariableDefinition, DeclaredFunction, replace_latex_symbols
+    UnaryOperatorDefinition, VariableDefinition, DeclaredFunction, spread, replace_latex_symbols
 
 
 def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
@@ -123,12 +123,21 @@ class Node(Token):
 
     def _eval_children(self, ctx:Context, definition:Definition):
         """ Evaluate each child node and yield the results """
+        # Yield children nodes instead of evaluated results if the definition is manual_eval
         if definition.manual_eval:
             for child in self.children:
                 yield child
-        else:
-            for child in self.children:
-                yield child.evaluate(ctx)
+            return
+
+        for child in self.children:
+            result = child.evaluate(ctx)
+            # Special case for spread operator: yield all items in the spread instead of
+            # the spread object itself
+            if isinstance(result, spread):
+                for item in result:
+                    yield item
+            else:
+                yield result
 
     def __str__(self):
         raise NotImplemented
@@ -240,8 +249,8 @@ class ListNode(Node):
         # Evaluate children and concatenate them together
         concat = ctx.get(',', DefinitionType.BINARY_OPERATOR)
         result = []
-        for child in self.children:
-            result = concat.func(result, child.evaluate(ctx))
+        for child in self._eval_children(ctx, concat):
+            result = concat.func(result, child)
         return result
 
     def __str__(self):
@@ -658,7 +667,6 @@ class Function(Identifier):
 
         # Evaluate arguments & pass it to the function
         inputs = list(self._eval_children(ctx, definition))
-        definition.check_inputs(len(inputs))
         return definition(*inputs)
 
     def __str__(self):

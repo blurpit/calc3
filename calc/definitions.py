@@ -83,6 +83,7 @@ class Definition:
             ))
 
     def __call__(self, *inputs):
+        self.check_inputs(len(inputs))
         if self.is_constant:
             return self.func
         elif self.manual_eval:
@@ -363,9 +364,13 @@ class BinaryOperatorDefinition(Definition):
         self.associativity = associativity
         self.latex_func = latex
 
-    def __str__(self):
+    @property
+    def signature(self):
         name = self.display_name or self.name
         return 'a ' + name + ' b'
+
+    def __str__(self):
+        return self.signature
 
     def __repr__(self):
         return '<{} symbol={}, precedence={}, func={}>'.format(
@@ -411,8 +416,12 @@ class UnaryOperatorDefinition(Definition):
             self.precedence = precedence
         self.latex_func = latex
 
-    def __str__(self):
+    @property
+    def signature(self):
         return self.name + 'x'
+
+    def __str__(self):
+        return self.signature
 
     def __repr__(self):
         return '<{} symbol={}, func={}>'.format(
@@ -689,6 +698,24 @@ class matrix(list):
             for row in self
         )
         return r'\begin{bmatrix} ' + body + r' \end{bmatrix}'
+
+
+class spread(list):
+    def __init__(self, items):
+        # Check input is an iterable
+        if not hasattr(items, '__iter__'):
+            raise TypeError("unsupported operand type for unary spread: '{}'"
+                            .format(type(items).__name__))
+        super().__init__(items)
+
+    def copy(self):
+        return spread(self)
+
+    def __str__(self):
+        return '*({})'.format(', '.join(map(str, self)))
+
+    def __repr__(self):
+        return 'spread({})'.format(super().__repr__())
 
 
 _latex_substitutions = {
