@@ -411,6 +411,10 @@ def greater(a, b):
 def less(a, b):
     return int(a < b)
 
+def coalesce(ctx, a, b):
+    a = evaluate(ctx, a)
+    return evaluate(ctx, b) if a is None else a
+
 def not_(x):
     return int(not x)
 
@@ -801,6 +805,7 @@ def create_default_context():
         BinaryOperatorDefinition('<', less,             3, Associativity.L_TO_R,                help_text="Less than comparison"),
         BinaryOperatorDefinition('+', operator.add,     4, Associativity.L_TO_R,                help_text="Addition operator"),
         BinaryOperatorDefinition('-', operator.sub,     4, Associativity.L_TO_R,                help_text="Subtraction operator"),
+        BinaryOperatorDefinition('?', coalesce,         4, Associativity.L_TO_R,                help_text="Returns `a` if it is not None, otherwise `b`", manual_eval=True),
         BinaryOperatorDefinition('*', operator.mul,     6, Associativity.L_TO_R, latex=tex_mul, help_text="Multiplication operator"),
         BinaryOperatorDefinition('/', operator.truediv, 6, Associativity.L_TO_R, latex=tex_div, help_text="Division operator"),
         BinaryOperatorDefinition('%', operator.mod,     6, Associativity.L_TO_R,                help_text="Remainder operator"),
