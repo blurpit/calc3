@@ -302,7 +302,7 @@ def help_(ctx, obj):
     if isinstance(obj, BinaryOperator):
         definition = ctx.get(obj.symbol, DefinitionType.BINARY_OPERATOR)
         return 'help: {}\n{}'.format(
-            definition.name,
+            definition.signature,
             definition.help_text or "No description provided"
         )
 
@@ -310,7 +310,7 @@ def help_(ctx, obj):
     if isinstance(obj, UnaryOperator):
         definition = ctx.get(obj.symbol, DefinitionType.UNARY_OPERATOR)
         return 'help: {}\n{}'.format(
-            definition.name,
+            definition.signature,
             definition.help_text or "No description provided"
         )
 
