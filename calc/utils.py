@@ -23,19 +23,21 @@ from .definitions import Associativity, DefinitionType, Definition, FunctionDefi
 from .parser import parse, Node, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable, \
     Number
 
-__all__ = ['evaluate', 'tree', 'console', 'graph', 'latex', 'create_default_context']
+__all__ = [
+    'evaluate',
+    'tree',
+    'console',
+    'graph',
+    'latex',
+    'create_default_context',
+    'replace_none_with_default'
+]
 
 
 # --- Helpers --- #
 
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
-
-class undefined:
-    def __str__(self): return 'undefined'
-    def __repr__(self): return 'undefined'
-    def __bool__(self): return False
-_undefined = undefined()
 
 @contextmanager
 def _capture_stdout():
@@ -51,14 +53,25 @@ def _capture_stdout():
     finally:
         sys.stdout = old_stdout
 
-def _replace_undefined_with_default(f):
-    """ Function wrapper that replaces `_undefined` with the default value for each positional argument. """
+def replace_none_with_default(f):
+    """
+    Function wrapper that replaces ``None`` with defaults in a function. Example::
+
+        @calc.replace_none_with_default
+        def foo(a, b=1, c=2, d=3):
+            print(a, b, c, d)
+
+        ctx.add(FunctionDefinition('foo', 'abcd', foo))
+        calc.evaluate(ctx, 'foo(_, _, _, _)')
+
+    Will print "None 1 2 3"
+    """
     def wrapper(*args):
         args = list(args)
         # number of required positional args
         offset = f.__code__.co_argcount - len(f.__defaults__)
         for i in range(offset, len(args)):
-            if args[i] is _undefined:
+            if args[i] is None:
                 args[i] = f.__defaults__[i - offset]
         return f(*args)
     return wrapper
@@ -316,7 +329,7 @@ def tree_(ctx, root):
     output.seek(0)
     return output.read().strip()
 
-@_replace_undefined_with_default
+@replace_none_with_default
 def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
     """ Graph function for use in a function definition. Use calc.graph() in regular code. """
     if not mpl or not plt:
@@ -686,7 +699,7 @@ def tex_integral(ctx, node, f, a, b):
             body, replace_latex_symbols(differential)
         )
 
-def tex_deriv(ctx, node, f, x, n=_undefined):
+def tex_deriv(ctx, node, f, x, n=None):
     with ctx.with_scope():
         if isinstance(f, Declaration):
             definition = f.definition
@@ -715,7 +728,7 @@ def tex_deriv(ctx, node, f, x, n=_undefined):
         if parens_right:
             body = r'\left( ' + body + r' \right)'
 
-        if n is _undefined:
+        if n is None:
             frac = r'\frac{{d}}{{d{}}} \Bigr|_{{{} = {}}}'.format(
                 differential, differential, x.latex(ctx)
             )
@@ -773,7 +786,7 @@ def create_default_context():
         VariableDefinition('∞',    math.inf,      help_text="Infinity"),
         VariableDefinition('inf',  math.inf, '∞', help_text="Infinity"),
         VariableDefinition('j',    1j,            help_text="Imaginary unit, sqrt(-1)"),
-        VariableDefinition('_',    _undefined,    help_text="Undefined value (Can be used to leave certain function arguments as their defaults)"),
+        VariableDefinition('_',    None,          help_text="None value"),
 
         # Binary Operators
         BinaryOperatorDefinition(',', concat,           0, Associativity.L_TO_R,                help_text="Concatenation operator"),
