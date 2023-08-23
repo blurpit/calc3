@@ -39,12 +39,14 @@ class Definition:
     associativity = Associativity.R_TO_L
     token_type = DefinitionType.IDENTIFIER
 
-    def __init__(self, name, args, f_args, func, **kwargs):
+    def __init__(self, name, args, f_args, opt_arg_i, func, is_const, **kwargs):
         """ Base class for definitions of identifiers. """
         self.name = name
         self.args = args
         self.f_args = f_args
+        self.opt_arg_i = opt_arg_i
         self.func = func
+        self.is_constant = is_const and len(args) == 0
         self.star_arg = kwargs.get('star_arg', False)
         self.display_name = kwargs.get('display_name', None)
         self.help_text = kwargs.get('help_text', None)
@@ -67,47 +69,75 @@ class Definition:
 
         If a definition is unbound, a copy will not be made when adding it to the context. Use ``.bind_context(None)``
         to unbind.
-
-        :param ctx: hello
         """
         self.ctx = ctx
 
     def check_inputs(self, n_inputs):
-        if len(self.args) != n_inputs and \
-                (not self.star_arg or n_inputs < len(self.args) - 1):
-            raise TypeError('{} expected {} argument{}, got {}'.format(
-                self.signature,
-                len(self.args),
-                '' if len(self.args) == 1 else 's',
-                n_inputs
-            ))
+        """ Verify that the number of inputs `n_inputs` passed is allowed for this function. Raises TypeError if not. """
+        minimum = len(self.args)
+        maximum = len(self.args)
+
+        if self.star_arg:
+            maximum = None
+
+        if self.opt_arg_i is not None:
+            minimum = self.opt_arg_i
+
+        if (minimum is not None and n_inputs < minimum) or (maximum is not None and n_inputs > maximum):
+            # Inputs are invalid
+            plural = lambda n: '' if n == 1 else 's'
+            if minimum == maximum:
+                raise TypeError('{} expected {} argument{}, got {}'
+                                .format(self.signature, minimum, plural(minimum), n_inputs))
+            elif maximum is None:
+                raise TypeError('{} expected at least {} argument{}, got {}'
+                                .format(self.signature, minimum, plural(minimum), n_inputs))
+            elif minimum is None:
+                raise TypeError('{} expected at most {} argument{}, got {}'
+                                .format(self.signature, minimum, plural(maximum), n_inputs))
+            else:
+                raise TypeError('{} expected between {} and {} arguments, got {}'
+                                .format(self.signature, minimum, maximum, n_inputs))
 
     def __call__(self, *inputs):
-        self.check_inputs(len(inputs))
         if self.is_constant:
             return self.func
-        elif self.manual_eval:
+
+        self.check_inputs(len(inputs))
+        if self.manual_eval:
             return self.func(self.ctx, *inputs)
         else:
             return self.func(*inputs)
 
     def add_args_to_context(self, ctx, inputs):
         """ Define args in a context as unknown definitions. """
+        # Unknown signature; match each arg to None and return
         if inputs is None:
-            # Unknown signature; match each arg to None
             for i in range(len(self.args)):
                 ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], None))
-        elif self.star_arg:
-            # Match each arg until the star arg, then pass the star arg as a list of the
-            # remaining inputs
-            for i in range(len(self.args)-1):
-                ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], inputs[i]))
+            return
+
+        # Number of required arguments
+        # Everything before opt_arg_i is required
+        num_req = self.opt_arg_i if self.opt_arg_i is not None else len(self.args)
+
+        # Number of optional arguments
+        # Non-required args are optional, minus one if there is a star arg
+        num_opt = len(self.args) - num_req - int(self.star_arg)
+
+        # Add required args, should be guaranteed to be in inputs
+        for i in range(num_req):
+            ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], inputs[i]))
+
+        # Add optional args
+        for i in range(num_req, num_req + num_opt):
+            value = inputs[i] if i < len(inputs) else None
+            ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], value))
+
+        # Add star args
+        if self.star_arg:
             last = len(self.args) - 1
             ctx.add(_wrap_argument_definition(self.args[last], False, list(inputs[last:])))
-        else:
-            # Match each arg to each input
-            for i in range(len(self.args)):
-                ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], inputs[i]))
 
     @property
     def signature(self):
@@ -120,17 +150,16 @@ class Definition:
             ', '.join(self._args_list())
         )
 
-    @property
-    def is_constant(self):
-        """ Constant functions take 0 arguments and their `func` is a value instead of a callable. """
-        return len(self.args) == 0 and not callable(self.func)
-
     def _args_list(self):
         """ Returns a list of pretty arg names, with () added for f_args and * added for star args. """
         args = []
         for i, name in enumerate(self.args):
             if self.f_args[i]:
                 name += '()'
+            if self.opt_arg_i is not None \
+                    and i >= self.opt_arg_i \
+                    and (not self.star_arg or i != len(self.args) - 1):
+                name += '?'
             args.append(name)
         if self.star_arg:
             args[-1] = '*' + args[-1]
@@ -160,9 +189,9 @@ def _wrap_argument_definition(arg_name, is_f_arg, value):
     :return: A Definition object with a name equal to arg_name
     """
     if is_f_arg:
-        return Definition(arg_name, ('...',), (False,), value, star_arg=True)
+        return Definition(arg_name, ('...',), (False,), None, value, False, star_arg=True)
     else:
-        return Definition(arg_name, (), (), value)
+        return Definition(arg_name, (), (), None, value, True)
 
 
 class FunctionDefinition(Definition):
@@ -173,7 +202,8 @@ class FunctionDefinition(Definition):
 
         `args` should be a list of strings which represent the name of each argument. If this function takes another
         function as an argument, add '()' to the name of that argument, for example ``args=['f()', 'x']`` takes a
-        function `f` and a variable `x` as inputs.
+        function `f` and a variable `x` as inputs. If the argument is optional, add '?' to the name. Optional arguments
+        will be passed ``None`` when omitted.
 
         `func` should be a callable if the function takes 1 or more arguments, otherwise it may be either a callable or
         a direct value.
@@ -212,46 +242,60 @@ class FunctionDefinition(Definition):
         :param help_text: Text shown on help()
         :param manual_eval: If True, evaluate inputs inside `func` rather than beforehand
         """
-        # Convert passed args list into args and f_args
         f_args = []
-        for i, arg in enumerate(args):
-            if arg.endswith('()'):
-                f_args.append(True)
-                args[i] = arg[:-2]
-            else:
-                f_args.append(False)
-            if len(args[i]) == 0:
-                raise ValueError('Function argument name cannot be empty')
-
-        # Check for star arg
+        opt_arg_i = None
         star_arg = False
-        for i, arg in enumerate(args):
-            if arg[0] == '*':
-                if len(arg) == 1:
-                    raise ValueError('Function argument name cannot be empty')
+
+        for i in range(len(args)):
+            # Check valid argument name (before modifiers)
+            if len(args[i]) == 0:
+                raise ValueError('Empty argument name')
+
+            # Check star arg
+            if args[i][0] == '*':
                 if i != len(args) - 1:
                     raise ValueError('Star argument must be last')
-                args[i] = arg[1:]
+                args[i] = args[i][1:]
                 star_arg = True
+                if opt_arg_i is None:
+                    opt_arg_i = i
 
-        # Check arg names
-        for arg in args:
-            if not is_identifier(arg):
-                raise ValueError("Invalid identifier name '{}'".format(arg))
+            # Check optional arg
+            if args[i].endswith('?'):
+                if opt_arg_i is None:
+                    opt_arg_i = i
+                args[i] = args[i][:-1]
+            elif opt_arg_i is not None and not star_arg:
+                # Optional args already found and this is a required arg
+                # Allow only if this is the star arg
+                raise ValueError('Required argument cannot come after an optional argument')
+
+            # Check function arg
+            if args[i].endswith('()'):
+                f_args.append(True)
+                args[i] = args[i][:-2]
+            else:
+                f_args.append(False)
+
+            # Check valid argument name (after modifiers)
+            if len(args[i]) == 0:
+                raise ValueError('Empty argument name')
+            if not args[i].isidentifier():
+                raise ValueError("Invalid argument name: '{}'".format(args[i]))
 
         # Check func
         # If func is None we'll assume it's supposed to be replaced later. If it doesn't get replaced, that's more
         # their problem than mine.
-        if func is not None and len(args) > 0 and not callable(func):
-            raise ValueError("Functions that take 1 or more arguments must be passed a callable, "
-                             "not '{}'".format(func))
+        if func is not None and not callable(func):
+            raise TypeError("FunctionDefinition must be passed a callable, not '{}'. "
+                            "Use VariableDefinition for non-callables.".format(func))
 
         if precedence is not None:
             self.precedence = precedence
         self.latex_func = latex
 
         super().__init__(
-            name, args, f_args, func,
+            name, args, f_args, opt_arg_i, func, False,
             star_arg=star_arg, display_name=display_name,
             manual_eval=manual_eval, help_text=help_text
         )
@@ -271,7 +315,7 @@ class VariableDefinition(Definition):
         :param help_text: Text shown on help()
         """
         super().__init__(
-            name, (), (), value,
+            name, (), (), None, value, True,
             display_name=display_name, help_text=help_text
         )
         self.latex_name = latex
@@ -285,14 +329,14 @@ class DeclaredFunction(FunctionDefinition):
     """
     def __init__(self, name, args, is_const):
         super().__init__(name, args, None)
-        self._is_const = is_const and len(args) == 0
+        self.is_constant = is_const and len(args) == 0
 
     def __call__(self, *inputs):
         """ Evaluate the function. A context must be binded to use this. """
         self.check_inputs(len(inputs))
 
         # Check cached value
-        if self._is_const and hasattr(self, '_value'):
+        if self.is_constant and hasattr(self, '_value'):
             return self._value
 
         with self.ctx.with_scope():
@@ -303,12 +347,8 @@ class DeclaredFunction(FunctionDefinition):
             self._value = result
             return result
 
-    @property
-    def is_constant(self):
-        return self._is_const
-
     def __str__(self):
-        if self._is_const and hasattr(self, '_value'):
+        if self.is_constant and hasattr(self, '_value'):
             if type(self._value) == list:
                 body = ', '.join(map(str, self._value))
             else:
@@ -357,7 +397,7 @@ class BinaryOperatorDefinition(Definition):
             raise ValueError("Invalid binary operator symbol '{}'; "
                              "symbols must be 1 character".format(symbol))
         super().__init__(
-            symbol, 'ab', (False, False), func,
+            symbol, 'ab', (False, False), None, func, False,
             help_text=help_text, manual_eval=manual_eval
         )
         self.precedence = precedence
@@ -409,7 +449,7 @@ class UnaryOperatorDefinition(Definition):
             raise ValueError("Invalid unary operator symbol '{}'; "
                              "sybmols must be 1 character".format(symbol))
         super().__init__(
-            symbol, 'x', (False,), func,
+            symbol, 'x', (False,), None, func, False,
             help_text=help_text, manual_eval=manual_eval
         )
         if precedence is not None:
