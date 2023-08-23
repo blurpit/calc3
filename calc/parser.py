@@ -1,6 +1,6 @@
 from .context import Context
 from .definitions import is_identifier, Associativity, DefinitionType, Definition, BinaryOperatorDefinition, \
-    UnaryOperatorDefinition, VariableDefinition, DeclaredFunction, spread, replace_latex_symbols
+    UnaryOperatorDefinition, VariableDefinition, DeclaredFunction, ArgumentError, spread, replace_latex_symbols
 
 
 def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
@@ -63,7 +63,7 @@ class ExpressionSyntaxError(Exception):
     def __init__(self, msg, expr, i, length=1):
         super().__init__(msg)
         self.i = i
-        self.length = length
+        self.length = max(1, length)
         self.expr = expr
 
     def __str__(self):
@@ -827,7 +827,10 @@ class Declaration(Identifier):
             return node, i, None
 
         # Create a function definition
-        definition = DeclaredFunction(name, args, is_const)
+        try:
+            definition = DeclaredFunction(name, args, is_const)
+        except ArgumentError as e:
+            raise cls._signature_error(e, name, args, expr, i) from None
 
         # Push the function definition and its argument variables to the context and parse the remainder of the
         # expression
@@ -904,6 +907,15 @@ class Declaration(Identifier):
             args.append(expr[i:j])
 
         return name, args, is_const
+
+    @staticmethod
+    def _signature_error(e:ArgumentError, name, args, expr, i):
+        # length of name plus one for the open parenthesis
+        j = i + len(name) + 1
+        for k in range(e.arg_i):
+            # length of the arg plus one for the comma
+            j += len(args[k]) + 1
+        return ExpressionSyntaxError(str(e), expr, j, len(args[e.arg_i]))
 
     @classmethod
     def find_expression_end(cls, ctx, expr, start, end):

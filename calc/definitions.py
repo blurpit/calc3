@@ -242,6 +242,7 @@ class FunctionDefinition(Definition):
         :param help_text: Text shown on help()
         :param manual_eval: If True, evaluate inputs inside `func` rather than beforehand
         """
+        args = list(args)
         f_args = []
         opt_arg_i = None
         star_arg = False
@@ -249,12 +250,12 @@ class FunctionDefinition(Definition):
         for i in range(len(args)):
             # Check valid argument name (before modifiers)
             if len(args[i]) == 0:
-                raise ValueError('Empty argument name')
+                raise ArgumentError(i, 'Empty argument name')
 
             # Check star arg
             if args[i][0] == '*':
                 if i != len(args) - 1:
-                    raise ValueError('Star argument must be last')
+                    raise ArgumentError(i, 'Star argument must be last')
                 args[i] = args[i][1:]
                 star_arg = True
                 if opt_arg_i is None:
@@ -268,7 +269,7 @@ class FunctionDefinition(Definition):
             elif opt_arg_i is not None and not star_arg:
                 # Optional args already found and this is a required arg
                 # Allow only if this is the star arg
-                raise ValueError('Required argument cannot come after an optional argument')
+                raise ArgumentError(i, 'Required argument cannot come after an optional argument')
 
             # Check function arg
             if args[i].endswith('()'):
@@ -279,9 +280,9 @@ class FunctionDefinition(Definition):
 
             # Check valid argument name (after modifiers)
             if len(args[i]) == 0:
-                raise ValueError('Empty argument name')
+                raise ArgumentError(i, 'Empty argument name')
             if not args[i].isidentifier():
-                raise ValueError("Invalid argument name: '{}'".format(args[i]))
+                raise ArgumentError(i, "Invalid argument name: '{}'".format(args[i]))
 
         # Check func
         # If func is None we'll assume it's supposed to be replaced later. If it doesn't get replaced, that's more
@@ -299,6 +300,11 @@ class FunctionDefinition(Definition):
             star_arg=star_arg, display_name=display_name,
             manual_eval=manual_eval, help_text=help_text
         )
+
+class ArgumentError(Exception):
+    def __init__(self, arg_i, msg):
+        super().__init__(msg)
+        self.arg_i = arg_i
 
 
 class VariableDefinition(Definition):
