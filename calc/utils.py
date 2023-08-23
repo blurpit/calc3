@@ -461,8 +461,12 @@ def map_(f, *arr):
         arr = arr[0]
     return list(map(f, arr))
 
-def range_(start, stop):
-    return list(range(start, stop))
+@replace_none_with_default
+def range_(a, b=None, step=1):
+    if b is None:
+        return list(range(0, a, step))
+    else:
+        return list(range(a, b, step))
 
 def if_(ctx, condition, if_t, if_f):
     if evaluate(ctx, condition):
@@ -536,6 +540,7 @@ def print_matrix(ctx, m, align=0.5):
 def integrate(f, a, b):
     return sp.integrate.quad(f, a, b)[0]
 
+@replace_none_with_default
 def differentiate(f, x, n=1):
     return sp.misc.derivative(f, x, dx=1e-4, n=n)
 
@@ -819,8 +824,8 @@ def create_default_context():
         FunctionDefinition('type',  ['obj'],           type_,  help_text="Returns the type of `obj`"),
         FunctionDefinition('help',  ['obj'],           help_,  help_text="Provides a description for the given identifier", manual_eval=True, precedence=-99),
         FunctionDefinition('tree',  ['expr'],          tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True, precedence=-99),
-        FunctionDefinition('graph', ['f()', '*args'],  graph_, help_text="Graphs a function `f(x)`. `args` includes xlow, xhigh, ylow, yhigh, and n"),
-        FunctionDefinition('latex', ['expr', '*eval'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 as a 2nd argument to evaluate before converting to LaTeX.", manual_eval=True, precedence=0),
+        FunctionDefinition('graph', ['f()', 'xlow?', 'xhigh?', 'ylow?', 'yhigh?', 'n?'], graph_, help_text="Graphs a function `f(x)`. `x/y low/high` define the x and y axis scale, and `n` is how many points to evaluate."),
+        FunctionDefinition('latex', ['expr', 'eval?'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 to `eval` to evaluate before converting to LaTeX.", manual_eval=True, precedence=0),
         FunctionDefinition('del',   ['obj'],           del_,   help_text="Delete an identifier", manual_eval=True),
 
         # Logic & Data Structure Functions
@@ -828,11 +833,11 @@ def create_default_context():
         FunctionDefinition('len',    ['*x'],                        len_,                  help_text="Length of `x`"),
         FunctionDefinition('filter', ['f()', '*x'],                 filter_,               help_text="Filters `x` for elements where `f(x)` is nonzero"),
         FunctionDefinition('map',    ['f()', '*x'],                 map_,                  help_text="Applies a function `f(x)` to each element of `x`"),
-        FunctionDefinition('range',  ['start', 'stop'],             range_,                help_text="Returns a list of integers from `start` (inclusive) to `stop` (exclusive)"),
+        FunctionDefinition('range',  ['a', 'b?', 'step?'],          range_,                help_text="Returns a list of integers from `a` (inclusive) to `b` (exclusive), or from 0 to `a` if `b` is omitted"),
         FunctionDefinition('max',    ['*x'],                        max,                   help_text="Returns the largest element of `x`"),
         FunctionDefinition('min',    ['*x'],                        min,                   help_text="Returns the smallest element of `x`"),
         FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_,     latex=tex_if, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
-        FunctionDefinition('set',    ['*x'],                        set_,                  help_text="Removes duplicates from a list"),
+        FunctionDefinition('set',    ['*x'],                        set_,                  help_text="Returns `x` with duplicates removed (order is not preserved)"),
 
         # Roots & Complex Functions
         FunctionDefinition('sqrt',  'x',  math.sqrt, latex=tex_root, help_text="Square root of `x`"),
@@ -872,9 +877,8 @@ def create_default_context():
         FunctionDefinition('randr',  'ab',  randrange,                           help_text="Random number between `a` and `b`"),
 
         # Calculus
-        FunctionDefinition('int',    ['f()', 'a', 'b'], integrate,     latex=tex_integral, help_text="Definite integral of `f(x)dx` from `a` to `b`"),
-        FunctionDefinition('deriv',  ['f()', 'x'],      differentiate, latex=tex_deriv,    help_text="First derivative of `f(x)dx` evaluated at `x`"),
-        FunctionDefinition('nderiv', ['f()', 'x', 'n'], differentiate, latex=tex_deriv,    help_text="`n`th derivative of `f(x)dx` evaluated at `x`"),
+        FunctionDefinition('int',    ['f()', 'a', 'b'],  integrate,     latex=tex_integral, help_text="Definite integral of `f(x)dx` from `a` to `b`"),
+        FunctionDefinition('deriv',  ['f()', 'x', 'n?'], differentiate, latex=tex_deriv,    help_text="`n`th derivative of `f(x)dx` evaluated at `x`"),
 
         # Vectors & Matrices
         FunctionDefinition('v',        ['*x'],    vector,        latex=tex_vec,    help_text="Creates a vector"),
