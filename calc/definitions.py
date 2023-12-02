@@ -70,7 +70,8 @@ class Definition:
         If a definition is unbound, a copy will not be made when adding it to the context. Use ``.bind_context(None)``
         to unbind.
         """
-        self.ctx = ctx
+        if self.manual_eval:
+            self.ctx = ctx
 
     def check_inputs(self, n_inputs):
         """ Verify that the number of inputs `n_inputs` passed is allowed for this function. Raises TypeError if not. """
@@ -336,6 +337,9 @@ class DeclaredFunction(FunctionDefinition):
     def __init__(self, name, args, is_const):
         super().__init__(name, args, None)
         self.is_constant = is_const and len(args) == 0
+
+    def bind_context(self, ctx):
+        self.ctx = ctx
 
     def __call__(self, *inputs):
         """ Evaluate the function. A context must be binded to use this. """
