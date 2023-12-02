@@ -795,7 +795,7 @@ def tex_transp(ctx, node, m):
 
 def create_default_context():
     ctx = Context()
-    ctx.add(
+    ctx.add_global(
         # Constants
         VariableDefinition('π',    math.pi,       help_text="Ratio of a circle's circumference to its diameter"),
         VariableDefinition('pi',   math.pi,  'π', help_text="Ratio of a circle's circumference to its diameter"),
@@ -931,7 +931,5 @@ def create_default_context():
         FunctionDefinition('cylsph', 'ρϕz', cylindrical_to_spherical, help_text="Converts cylindrical coordinates to spherical coordinates"),
         FunctionDefinition('sphcrt', 'rθϕ', spherical_to_cartesian,   help_text="Converts spherical coordinates to cartesian coordinates"),
         FunctionDefinition('sphcyl', 'rθϕ', spherical_to_cylindrical, help_text="Converts spherical coordinates to cylindrical coordinates"),
-
-        override_global=True
     )
     return ctx

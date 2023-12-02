@@ -2,12 +2,14 @@ import math
 import pickle
 import sys
 from contextlib import contextmanager
+from typing import List, Tuple, Union
 
-from .definitions import DefinitionType, Definition, DeclaredFunction
+from .definitions import DeclaredFunction, Definition, DefinitionType
 
 
 class ContextError(Exception):
     pass
+
 
 class Params:
     # Number of decimal places to round numbers to after evaluating. Applies
@@ -27,24 +29,54 @@ class Params:
     #    single variable 'yx'.
     parse_unknown_identifiers = False
 
+    # If False, any items added to the context with the same name (and definition
+    # type) as an item in the global scope will raise a ContextError. Shadowed items
+    # replace an item in its parent scope(s) until its scope is popped.
+    allow_global_scope_shadowing = False
+
+
 class Context:
     def __init__(self):
         self.params = Params()
-        self.stack = [{}]
+        self.global_scope = Scope()
+        self.stack: List[Scope] = [self.global_scope]
         self.ans = 0
 
-    def add(self, *definitions:Definition, override_global=False):
-        """ Add a collection of Definitions to the top scope in the context. If `override_global`
-            is False, modifying the global scope or overriding items from the global scope will
-            raise a ContextError. """
-        for definition in definitions:
-            self.set(definition.name, definition.token_type, definition, override_global)
+    def add(self, *definitions: Definition):
+        """ Add a collection of Definitions to the top scope in the context. """
+        # If the global scope is the only scope, raise an error. Use ctx.add_global to modify the
+        # global scope instead.
+        if len(self.stack) == 1:
+            raise ContextError('Cannot modify global scope')
 
-    def get(self, name:str, token_type:DefinitionType=DefinitionType.IDENTIFIER, default=ContextError):
+        for definition in definitions:
+            # Check if the definition would shadow the global scope
+            if not self.params.allow_global_scope_shadowing and definition in self.global_scope:
+                raise ContextError("Cannot shadow '{}' from global scope".format(definition.name))
+
+            # If the definition is bound to another context, make a duplicate and bind it to this context
+            if definition.ctx is not None and definition.ctx is not self:
+                definition = definition.copy()
+            definition.bind_context(self)
+
+            # Add the definition to the scope at the top of the stack
+            self.stack[-1].add(definition)
+
+    def add_global(self, *definitions: Definition):
+        """ Add a collection of definitions to the global scope. """
+        for definition in definitions:
+            # If the definition is bound to another context, make a duplicate and bind it to this context
+            if definition.ctx is not None and definition.ctx is not self:
+                definition = definition.copy()
+            definition.bind_context(self)
+
+            self.global_scope.add(definition)
+
+    def get(self, name: str, token_type: DefinitionType = DefinitionType.IDENTIFIER, default=ContextError):
         """ Get an item from the context. Items higher on the scope stack will be returned first. """
-        for ctx in reversed(self.stack):
-            result = ctx.get((name, token_type), ContextError)
-            if result is not ContextError:
+        for scope in reversed(self.stack):
+            result = scope.get(name, token_type)
+            if result is not None:
                 return result
 
         if default is ContextError:
@@ -53,33 +85,10 @@ class Context:
             return default
 
     def __contains__(self, item):
-        if isinstance(item, tuple):
-            if len(item) != 2:
-                return False
-        elif isinstance(item, Definition):
-            item = (item.name, item.token_type)
-        else:
-            item = (item, DefinitionType.IDENTIFIER)
-
         for scope in reversed(self.stack):
             if item in scope:
                 return True
         return False
-
-    def set(self, name:str, token_type:DefinitionType, definition:Definition, override_global=False):
-        """ Set an item in the context directly. In most cases you should use ``add()`` instead. """
-        if not override_global:
-            if len(self.stack) < 2:
-                raise ContextError('Cannot modify global scope')
-            elif (name, token_type) in self.stack[0]:
-                raise ContextError("Cannot override '{}' from global scope".format(name))
-
-        # If the definition is bound to another context, make a duplicate and bind it to this context
-        if definition.ctx is not None and definition.ctx is not self:
-            definition = definition.copy()
-        definition.bind_context(self)
-
-        self.stack[-1][(name, token_type)] = definition
 
     def keys(self):
         result = set()
@@ -87,13 +96,13 @@ class Context:
             result.update(scope.keys())
         return result
 
-    def remove(self, name:str, token_type:DefinitionType):
+    def remove(self, name: str, token_type: DefinitionType):
         """ Removes and returns an item from the context given the name. If the name appears more than
             once in the context, removes the first occurance moving down from the top of the stack.
             Raises a ContextError if the name is not found or is in the global scope. """
         key = (name, token_type)
-        for ctx in reversed(self.stack[1:]):
-            result = ctx.pop(key, None)
+        for scope in reversed(self.stack[1:]):
+            result = scope.pop(key, None)
             if result is not None:
                 return result
 
@@ -106,7 +115,7 @@ class Context:
 
     def push_scope(self):
         """ Push a new scope to the stack """
-        self.stack.append({})
+        self.stack.append(Scope())
 
     def pop_scope(self):
         """ Pop the top scope off the stack """
@@ -161,7 +170,7 @@ class Context:
         if self.params.rounding is not None:
             if hasattr(result, '__round__'):
                 # Object has its own round function
-                    result = round(result, self.params.rounding)
+                result = round(result, self.params.rounding)
             elif isinstance(result, list):
                 # Round each element of the list
                 result = result.copy()
@@ -189,12 +198,40 @@ class Context:
         return len(self.stack)
 
     def __str__(self):
-        s = 'Context(\n'
-        for i, ctx in enumerate(self.stack[1:], 1):
-            for item in ctx.values():
-                s += '\t'*i + str(item) + '\n'
-        s += ')'
+        s = 'Context {\n'
+        for i, scope in enumerate(self.stack[1:], 1):
+            for definition in scope.values():
+                s += '\t' * i + str(definition) + '\n'
+        s += '}'
         return s
 
     def __repr__(self):
-        return '<Context length={}>'.format(len(self.stack))
+        return '<Context size={}>'.format(len(self.stack))
+
+
+class Scope(dict):
+    def add(self, definition: Definition):
+        """ Add a definition to the scope. Replaces the existing definition if there is one. """
+        self[(definition.name, definition.token_type)] = definition
+
+    def get(self, name: str, token_type: DefinitionType = DefinitionType.IDENTIFIER, default=None):
+        """ Get a definition from the scope. """
+        return super().get((name, token_type), default)
+
+    def __contains__(self, item: Union[Definition, Tuple[str, DefinitionType]]):
+        if isinstance(item, Definition):
+            return super().__contains__((item.name, item.token_type))
+        elif isinstance(item, tuple):
+            return super().__contains__(item)
+        else:
+            return False
+
+    def __str__(self):
+        s = 'Scope {\n'
+        for definition in self.values():
+            s += '\t' + str(definition) + '\n'
+        s += '}'
+        return s
+
+    def __repr__(self):
+        return '<Scope size={}>'.format(len(self))
