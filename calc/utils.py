@@ -445,6 +445,16 @@ def fibonacci(n):
 def randrange(a, b):
     return random() * (b - a) + a
 
+def average(*arr):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
+        arr = arr[0]
+    return sum(arr) / len(arr)
+
+def median(*arr):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
+        arr = arr[0]
+    return np.median(arr)
+
 def sum_(*arr):
     if len(arr) == 1 and hasattr(arr[0], '__iter__'):
         arr = arr[0]
@@ -872,14 +882,16 @@ def create_default_context():
         FunctionDefinition('log10', 'x',  math.log10, latex=tex_log, help_text="Base 10 logarithm of `x`"),
         FunctionDefinition('log',   'xb', math.log,   latex=tex_log, help_text="Base `b` logarithm of `x`"),
 
-        # Combinatorial & Random Functions
-        FunctionDefinition('fact',   'n',   math.factorial, 7, latex=tex_fact,   help_text="Factorial of `n`"),
-        FunctionDefinition('perm',   'nk',  math.perm,                           help_text="Number of ways to choose `k` items from `n` items without repetition and with order"),
-        FunctionDefinition('choose', 'nk',  math.comb,         latex=tex_choose, help_text="Number of ways to choose `k` items from `n` items without repetition and without order"),
-        FunctionDefinition('binom',  'pxn', binomial,                            help_text="Probability of an event with probability `p` happening exactly `x` times in `n` trials"),
-        FunctionDefinition('fib',    'n',   fibonacci,                           help_text="`n`th fibonacci number"),
-        FunctionDefinition('rand',   '',    random,                              help_text="Random number between 0 and 1"),
-        FunctionDefinition('randr',  'ab',  randrange,                           help_text="Random number between `a` and `b`"),
+        # Combinatorial & Statistics Functions
+        FunctionDefinition('fact',   'n',    math.factorial, 7, latex=tex_fact,   help_text="Factorial of `n`"),
+        FunctionDefinition('perm',   'nk',   math.perm,                           help_text="Number of ways to choose `k` items from `n` items without repetition and with order"),
+        FunctionDefinition('choose', 'nk',   math.comb,         latex=tex_choose, help_text="Number of ways to choose `k` items from `n` items without repetition and without order"),
+        FunctionDefinition('binom',  'pxn',  binomial,                            help_text="Probability of an event with probability `p` happening exactly `x` times in `n` trials"),
+        FunctionDefinition('fib',    'n',    fibonacci,                           help_text="`n`th fibonacci number"),
+        FunctionDefinition('rand',   '',     random,                              help_text="Random number between 0 and 1"),
+        FunctionDefinition('randr',  'ab',   randrange,                           help_text="Random number between `a` and `b`"),
+        FunctionDefinition('avg',    ['*x'], average,                             help_text="Average of `x`"),
+        FunctionDefinition('median', ['*x'], median,                              help_text="Median of `x`"),
 
         # Calculus
         FunctionDefinition('int',    ['f()', 'a', 'b'],  integrate,     latex=tex_integral, help_text="Definite integral of `f(x)dx` from `a` to `b`"),
