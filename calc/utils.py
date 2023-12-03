@@ -494,6 +494,16 @@ def range_(a, b=None, step=1):
     else:
         return list(range(a, b, step))
 
+def max_(*arr):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
+        arr = arr[0]
+    return max(arr)
+
+def min_(*arr):
+    if len(arr) == 1 and hasattr(arr[0], '__iter__'):
+        arr = arr[0]
+    return min(arr)
+
 def if_(ctx, condition, if_t, if_f):
     if evaluate(ctx, condition):
         return evaluate(ctx, if_t)
@@ -862,8 +872,8 @@ def create_default_context():
         FunctionDefinition('filter', ['f()', '*x'],                 filter_,               help_text="Filters `x` for elements where `f(x)` is nonzero"),
         FunctionDefinition('map',    ['f()', '*x'],                 map_,                  help_text="Applies a function `f(x)` to each element of `x`"),
         FunctionDefinition('range',  ['a', 'b?', 'step?'],          range_,                help_text="Returns a list of integers from `a` (inclusive) to `b` (exclusive), or from 0 to `a` if `b` is omitted"),
-        FunctionDefinition('max',    ['*x'],                        max,                   help_text="Returns the largest element of `x`"),
-        FunctionDefinition('min',    ['*x'],                        min,                   help_text="Returns the smallest element of `x`"),
+        FunctionDefinition('max',    ['*x'],                        max_,                  help_text="Returns the largest element of `x`"),
+        FunctionDefinition('min',    ['*x'],                        min_,                  help_text="Returns the smallest element of `x`"),
         FunctionDefinition('if',     ['condition', 'if_t', 'if_f'], if_,     latex=tex_if, help_text="Returns `if_t` if `condition` is nonzero, and `if_f` otherwise", manual_eval=True),
         FunctionDefinition('set',    ['*x'],                        set_,                  help_text="Returns `x` with duplicates removed (order is not preserved)"),
 
