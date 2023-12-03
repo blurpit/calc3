@@ -126,26 +126,27 @@ def tree(ctx:Context, expression:Union[Definition, str]):
     if isinstance(expression, str):
         expression = re.sub(r'\s+', '', expression)
         root = parse(ctx, expression)
-        if len(root.children) == 1:
-            # Remove singleton ListNodes
-            root = root.children[0]
     else:
         root = expression
 
     if isinstance(root, DeclaredFunction):
         root = root.func
         msg = 'Declaration ' + str(root)
-    elif isinstance(root, Function) and len(root.children) == 0:
+    elif isinstance(root, Function):
         # Function reference
         definition = ctx.get(root.name)
         if isinstance(definition, DeclaredFunction):
-            # DeclaredFunction reference
+            # If the root is a reference to a DeclaredFunction, print the full tree
+            # for the function.
             root = definition.func
             msg = 'Declaration ' + str(definition)
         else:
             # Some other function
             msg = 'Expression ' + str(root)
     elif isinstance(root, Node):
+        if isinstance(root, ListNode) and len(root.children) == 1:
+            # Remove singleton ListNodes
+            root = root.children[0]
         msg = 'Expression ' + str(root)
     else:
         raise TypeError("Can't create a tree from type '{}'".format(type(root).__name__))
