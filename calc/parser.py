@@ -957,7 +957,9 @@ class Declaration(Identifier):
 
     def evaluate(self, ctx:Context):
         # Save the scope into the definition (unless it is a constant, which doesn't need scope)
-        if not self.definition.is_constant and len(self._required_identifiers) > 0:
+        if (ctx.params.save_declared_function_outer_scope
+                and not self.definition.is_constant
+                and len(self._required_identifiers) > 0):
             scope = ctx.scope_from(self._required_identifiers)
             self.definition.save_scope(scope)
 

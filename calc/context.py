@@ -12,30 +12,47 @@ class ContextError(Exception):
 
 
 class Params:
-    # Number of decimal places to round numbers to after evaluating. Applies
-    # to floats, vectors, & matrices.
-    #  - None (default behavior) means no rounding, leave results as is. This
-    #    may result in floating point precision errors.
-    #  - Floats with no decimal component will still be converted to ints even
-    #    if rounding is disabled.
     rounding = None
+    """
+    Number of decimal places to round numbers to after evaluating. Applies
+    to floats, vectors, & matrices.
+     - None (default behavior) means no rounding, leave results as is. This
+       may result in floating point precision errors.
+     - Floats with no decimal component will still be converted to ints even
+       if rounding is disabled.
+    """
 
-    # If False, identifiers that don't exist in the context at parse time
-    # will raise an ExpressionSyntaxError (default behavior). If True, unknown
-    # identifiers will be added to the syntax tree as Variables.
-    #  - Note that the parser will not try to guess how best to split unknown
-    #    identifiers and will simply read left to right; for example if 'x' is
-    #    defined, 'xy' will be parsed as 'x*y' but 'yx' will be parsed as a
-    #    single variable 'yx'.
     parse_unknown_identifiers = False
+    """
+    If False, identifiers that don't exist in the context at parse time
+    will raise an ExpressionSyntaxError (default behavior). If True, unknown
+    identifiers will be added to the syntax tree as Variables.
+     - Note that the parser will not try to guess how best to split unknown
+       identifiers and will simply read left to right; for example if 'x' is
+       defined, 'xy' will be parsed as 'x*y' but 'yx' will be parsed as a
+       single variable 'yx'.
+    """
 
-    # If False, any items added to the context with the same name (and definition
-    # type) as an item in the global scope will raise a ContextError. Shadowed items
-    # replace an item in its parent scope(s) until its scope is popped.
     allow_global_scope_shadowing = False
+    """
+    If False, any items added to the context with the same name (and definition
+    type) as an item in the global scope will raise a ContextError. Shadowed 
+    items replace an item in its parent scope(s) until its scope is popped.
+    """
 
-    # If True, the scope
-    save_declared_function_scopes = True
+    save_declared_function_outer_scope = True
+    """
+    If True, declared functions will store the identifiers they use from their 
+    outer scope. For example::
+
+        p = 5
+        g(x) = xp
+        del(p)
+        
+    ``g(x)`` will save ``p`` into its scope, so ``g(3)`` will result in 15 even 
+    after ``p`` is deleted. This is useful if a function returns another function;
+    the returned function will remember the arguments of the outer function.
+    """
 
 
 class Scope(dict):
