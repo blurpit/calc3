@@ -397,10 +397,7 @@ def scope_(f):
     s = 'Outer scope of {} {{\n'.format(f.signature)
     if f.saved_scope is not None:
         for definition in f.saved_scope.values():
-            if not isinstance(definition, DeclaredFunction) and definition.is_constant:
-                s += '\t{} = {}\n'.format(definition, definition())
-            else:
-                s += '\t{}\n'.format(definition)
+            s += '\t{}\n'.format(definition)
     s += '}'
     return s
 

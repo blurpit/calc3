@@ -115,7 +115,7 @@ class Definition:
         # Unknown signature; match each arg to None and return
         if inputs is None:
             for i in range(len(self.args)):
-                ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], None))
+                ctx.add(ArgumentWrapper(self.args[i], self.f_args[i], None))
             return
 
         # Number of required arguments
@@ -128,17 +128,17 @@ class Definition:
 
         # Add required args, should be guaranteed to be in inputs
         for i in range(num_req):
-            ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], inputs[i]))
+            ctx.add(ArgumentWrapper(self.args[i], self.f_args[i], inputs[i]))
 
         # Add optional args
         for i in range(num_req, num_req + num_opt):
             value = inputs[i] if i < len(inputs) else None
-            ctx.add(_wrap_argument_definition(self.args[i], self.f_args[i], value))
+            ctx.add(ArgumentWrapper(self.args[i], self.f_args[i], value))
 
         # Add star args
         if self.star_arg:
             last = len(self.args) - 1
-            ctx.add(_wrap_argument_definition(self.args[last], False, list(inputs[last:])))
+            ctx.add(ArgumentWrapper(self.args[last], False, list(inputs[last:])))
 
     @property
     def signature(self):
@@ -177,22 +177,42 @@ class Definition:
             repr(self.func),
         )
 
-def _wrap_argument_definition(arg_name, is_f_arg, value):
-    """
-    Wraps a given value in a new Definition with a given argument name. This is used to associate values passed into
-    a function with the argument it was passed in to. For example if "pi/2" is passed into sqrt(x), then a new
-    Definition is returned with a name "x" and value "pi/2". The parser uses this to declare that an identifier
-    will exist at evaluation time.
+class ArgumentWrapper(Definition):
+    def __init__(self, arg_name, is_f_arg, value):
+        """
+        Wraps a given value in a new Definition with a given argument name. This is used to associate values passed into
+        a function with the argument it was passed in to. For example if "pi/2" is passed into sqrt(x), then a new
+        Definition is returned with a name "x" and value "pi/2". The parser uses this to declare that an identifier
+        will exist at evaluation time.
 
-    :param arg_name: Argument name
-    :param is_f_arg: Whether this argument is a function
-    :param value: Value of the identifier (or None if unknown)
-    :return: A Definition object with a name equal to arg_name
-    """
-    if is_f_arg:
-        return Definition(arg_name, ('...',), (False,), None, value, False, star_arg=True)
-    else:
-        return Definition(arg_name, (), (), None, value, True)
+        :param arg_name: Argument name
+        :param is_f_arg: Whether this argument is a function
+        :param value: Value of the identifier (or None if unknown)
+        :return: A Definition object with a name equal to arg_name
+        """
+        if is_f_arg:
+            super().__init__(arg_name, ('...',), (False,), None, value, False, star_arg=True)
+        else:
+            super().__init__(arg_name, (), (), None, value, True)
+
+    def __str__(self):
+        if self.func is None:
+            return self.signature
+
+        print('Func:', type(self.func), repr(self.func))
+        if self.is_constant and type(self.func) == list:
+            body = ', '.join(map(str, self.func))
+        else:
+            body = str(self.func)
+
+        # if type(self.func).__name__ == 'ListNode':
+        #     # add parentheses if the function returns a list (Ex. "f(x)=(1,2,3), 4") because the comma operator has
+        #     # lower precedence than a declaration.
+        #     # Todo: compare precedences instead of a direct check for a ListNode type. This should, ideally, reflect
+        #     #       Declaration.find_expression_end().
+        #     body = '(' + body + ')'
+
+        return '{} = {}'.format(self.signature, body)
 
 
 class FunctionDefinition(Definition):
