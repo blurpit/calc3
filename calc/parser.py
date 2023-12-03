@@ -266,7 +266,7 @@ class ListNode(Node):
         return ',\, '.join(node.latex(ctx) for node in self.children)
 
     def tree_tag(self):
-        return '{}()'.format(type(self).__name__)
+        return type(self).__name__
 
 
 class EndOfExpression(Token):
@@ -555,7 +555,7 @@ class FunctionCall(Node):
         return super().latex(ctx)
 
     def tree_tag(self):
-        return 'FunctionCall'
+        return type(self).__name__
 
 
 class Number(Node):
