@@ -675,6 +675,9 @@ class Identifier(Node):
             iden = Function(definition)
 
         node.add_child(iden)
+        if not definition.is_constant and len(definition.args) == 0:
+            # Immediately parse a function call for 0-arg functions
+            return FunctionCall.parse(ctx, iden, i + len(definition.name), expr, start, end)
         return iden, i + len(definition.name), iden.next_expected()
 
     def __str__(self):
