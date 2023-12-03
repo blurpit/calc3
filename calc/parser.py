@@ -532,7 +532,11 @@ class FunctionCall(Node):
         return definition(*inputs)
 
     def __repr__(self):
-        pass
+        return '<{} func={}, explicit={}>'.format(
+            type(self).__name__,
+            repr(self.children[0]),
+            self.explicit
+        )
 
     def __str__(self):
         func = self.children[0]
