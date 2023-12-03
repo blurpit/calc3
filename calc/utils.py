@@ -96,19 +96,22 @@ if mpl and plt:
 
 def evaluate(ctx:Context, expression):
     """ Evaluate an expression """
-    if isinstance(expression, Node):
-        return expression.evaluate(ctx)
-    elif not isinstance(expression, str):
-        return expression
+    if isinstance(expression, str):
+        # String expression
+        expression = re.sub(r'\s+', '', expression)
+        root = parse(ctx, expression)
+        answer = root.evaluate(ctx)
+    elif isinstance(expression, Node):
+        # Expression already parsed into a syntax tree
+        answer = expression.evaluate(ctx)
+    else:
+        # Anything else
+        answer = expression
 
-    expression = re.sub(r'\s+', '', expression)
-    root = parse(ctx, expression)
-
-    answer = root.evaluate(ctx)
     if isinstance(answer, DeclaredFunction) and answer.is_constant:
         # Evaluate and cache constant values asap
         answer()
-    if isinstance(answer, spread):
+    elif isinstance(answer, spread):
         # Get rid of spread operators
         answer = list(answer)
 
@@ -142,8 +145,10 @@ def tree(ctx:Context, expression:Union[Definition, str]):
         else:
             # Some other function
             msg = 'Expression ' + str(root)
-    else:
+    elif isinstance(root, Node):
         msg = 'Expression ' + str(root)
+    else:
+        raise TypeError("Can't create a tree from type '{}'".format(type(root).__name__))
 
     t = treelib.Tree()
     parent = root.parent # temporarily remove parent
@@ -153,7 +158,7 @@ def tree(ctx:Context, expression:Union[Definition, str]):
     print(msg)
     t.show()
 
-def console(ctx:Context, *, show_time=False, show_tree=False):
+def console(ctx:Context, *, show_time=False, show_tree=False, echo=False):
     """ Start an interactive console """
     # noinspection PyUnresolvedReferences
     from colorama import Fore, Style, just_fix_windows_console
@@ -183,12 +188,22 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
                 print(ctx)
             else:
                 try:
+                    # Parse expression
+                    exp = re.sub(r'\s+', '', exp)
+                    root = parse(ctx, exp)
+
+                    # Print echo or tree
+                    if echo:
+                        cprint(str(root), Fore.CYAN)
                     if show_tree:
-                        tree(ctx, exp)
+                        tree(ctx, root)
+
+                    # Evaluate expression
                     t = time.perf_counter()
                     result = evaluate(ctx, exp)
                     t = time.perf_counter() - t
 
+                    # Add result to context or show graph figure
                     if isinstance(result, DeclaredFunction):
                         ctx.add(result)
                         cprint(f'Added {result.signature} to context.', Fore.YELLOW)
@@ -196,8 +211,10 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
                         result.show()
                         continue
 
+                    # Print result
                     cprint(to_str(result), Style.BRIGHT)
 
+                    # Print elapsed time
                     if show_time:
                         cprint('{:.5f}ms'.format(t*1000), Style.DIM)
                 except Exception as e:
