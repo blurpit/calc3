@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Iterable, Union
 
 from .context import Context
 from .definitions import ArgumentError, Associativity, BinaryOperatorDefinition, DeclaredFunction, Definition, \
@@ -83,7 +83,7 @@ class Token:
     inherit from Node. The next_expected function can be either a class method or instance method.
     """
     @classmethod
-    def parse(cls, ctx, node, i, expr, start, end):
+    def parse(cls, ctx: Context, node: 'Node', i: int, expr: str, start: int, end: int):
         """
         Parse one token of this type. If a node is sucessfully parsed, update the syntax tree accordingly. Returns the
         updated current working node, the updated expression index, and a list of next expected token types.
@@ -115,7 +115,7 @@ class Node(Token):
         if associativity is not None:
             self.associativity = associativity
 
-    def next_expected(self):
+    def next_expected(self, *args, **kwargs):
         """ Returns a list of Tokens expected after this token. """
         raise NotImplemented
 
@@ -123,16 +123,17 @@ class Node(Token):
         """ Evaluate this node """
         raise NotImplemented
 
-    def _eval_children(self, ctx:Context, definition:Definition):
+    @staticmethod
+    def eval_nodes(ctx: Context, nodes: Iterable['Node'], manual_eval=False):
         """ Evaluate each child node and yield the results """
         # Yield children nodes instead of evaluated results if the definition is manual_eval
-        if definition.manual_eval:
-            for child in self.children:
-                yield child
+        if manual_eval:
+            for node in nodes:
+                yield node
             return
 
-        for child in self.children:
-            result = child.evaluate(ctx)
+        for node in nodes:
+            result = node.evaluate(ctx)
             # Special case for spread operator: yield all items in the spread instead of
             # the spread object itself
             if isinstance(result, spread):
@@ -142,18 +143,18 @@ class Node(Token):
                 yield result
 
     def __str__(self):
-        raise NotImplemented
+        raise NotImplementedError('{} does not implement __str__'.format(type(self).__name__))
 
     def __repr__(self):
-        raise NotImplemented
+        raise NotImplementedError('{} does not implement __repr__'.format(type(self).__name__))
 
     def latex(self, ctx):
         """ Convert this node to a LaTeX string """
-        raise NotImplemented
+        raise NotImplementedError('{} does not implement latex'.format(type(self).__name__))
 
-    def _tree_tag(self):
+    def tree_tag(self):
         """ Returns a string used as the tag for this node when added to a treelib.Tree """
-        raise NotImplemented
+        raise NotImplementedError('{} does not implement tree_tag'.format(type(self).__name__))
 
     def add_child(self, node):
         """ Insert a node below self """
@@ -233,7 +234,7 @@ class Node(Token):
     def add_to_tree(self, tree, num):
         """ Add this syntax tree to a treelib.Tree. `num` is added to the tag to keep children in order. """
         tree.create_node(
-            str(num) + ' ' + self._tree_tag(),
+            str(num) + ' ' + self.tree_tag(),
             id(self),
             id(self.parent) if self.parent else None
         )
@@ -251,7 +252,7 @@ class ListNode(Node):
         # Evaluate children and concatenate them together
         concat = ctx.get(',', DefinitionType.BINARY_OPERATOR)
         result = []
-        for child in self._eval_children(ctx, concat):
+        for child in self.eval_nodes(ctx, self.children, concat.manual_eval):
             result = concat.func(result, child)
         return result
 
@@ -264,7 +265,7 @@ class ListNode(Node):
     def latex(self, ctx):
         return ',\, '.join(node.latex(ctx) for node in self.children)
 
-    def _tree_tag(self):
+    def tree_tag(self):
         return '{}()'.format(type(self).__name__)
 
 
@@ -305,7 +306,7 @@ class BinaryOperator(Node):
 
     def evaluate(self, ctx):
         op = ctx.get(self.symbol, DefinitionType.BINARY_OPERATOR)
-        return op(*self._eval_children(ctx, op))
+        return op(*self.eval_nodes(ctx, self.children, op.manual_eval))
 
     def __str__(self):
         left = self.children[0]
@@ -362,7 +363,7 @@ class BinaryOperator(Node):
         else:
             return '{} {} {}'.format(left, replace_latex_symbols(definition.name), right)
 
-    def _tree_tag(self):
+    def tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
 
 
@@ -386,7 +387,7 @@ class UnaryOperator(Node):
 
     def evaluate(self, ctx:Context):
         op = ctx.get(self.symbol, DefinitionType.UNARY_OPERATOR)
-        return op(*self._eval_children(ctx, op))
+        return op(*self.eval_nodes(ctx, self.children, op.manual_eval))
 
     def __str__(self):
         right = self.children[0]
@@ -417,7 +418,7 @@ class UnaryOperator(Node):
             right = r'\left(' + right + r'\right)'
         return replace_latex_symbols(definition.name) + right
 
-    def _tree_tag(self):
+    def tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.symbol)
 
 
@@ -433,7 +434,7 @@ class Parenthesis(Token):
         # Parse expression inside the parentheses
         root:ListNode = parse(ctx, expr, start=i+1, end=close)
 
-        if isinstance(node, (Function, Declaration)):
+        if isinstance(node, FunctionCall):
             # If the current node is a function, keep the working node on the function. Add all child nodes of the
             # parenthesized expression root as children of the function.
             for child in root.children:
@@ -448,8 +449,8 @@ class Parenthesis(Token):
         return node, close + 1, cls.next_expected(node)
 
     @classmethod
-    def next_expected(cls, root):
-        if isinstance(root, (Function, Declaration)) and not root.explicit:
+    def next_expected(cls, root: Node):
+        if isinstance(root, (Function, Declaration)):
             # If the parentheses contained a function then tokens after the parentheses should be treated as a function
             # call (Ex. "(sin)(3)" or "(f(x)=2x)(4)")
             return [BinaryOperator, FunctionCall, EndOfExpression]
@@ -487,35 +488,69 @@ class Parenthesis(Token):
         return j - 1
 
 
-class FunctionCall(Token):
+class FunctionCall(Node):
+    def __init__(self, explicit):
+        super().__init__()
+        self.explicit = explicit
+
     @classmethod
-    def parse(cls, ctx, node, i, expr, start, end):
+    def parse(cls, ctx, func: Union['Function', 'Declaration'], i, expr, start, end):
         # Explicit empty call. Remove the () and continue.
         if expr[i:i+2] == '()':
-            node.explicit = True
-            return node, i+2, cls.next_expected(True)
+            call = cls(True)
+            func.insert_parent(call)
+            return call, i+2, call.next_expected()
 
-        # Implicit call to a 0-arg function. Set as implicit but continue as explicit.
-        elif node.n_args == 0:
-            node.explicit = False
-            return node, i, cls.next_expected(True)
+        # Implicit call to a 0-arg function. Treat the same as an explicit empty call.
+        elif func.n_args == 0:
+            call = cls(True)
+            func.insert_parent(call)
+            return call, i, call.next_expected()
 
         # Explicit non-empty call. Parse the inside of the parentheses.
         elif expr[i] == '(':
-            node.explicit = True
-            node, i, _ = Parenthesis.parse(ctx, node, i, expr, start, end)
-            return node, i, cls.next_expected(True)
+            call = cls(True)
+            func.insert_parent(call)
+            args, i, _ = Parenthesis.parse(ctx, call, i, expr, start, end)
+            return call, i, call.next_expected()
 
         # Implicit call.
         else:
-            node.explicit = False
-            return node, i, cls.next_expected(False)
+            call = cls(False)
+            func.insert_parent(call)
+            return call, i, call.next_expected()
 
-    @classmethod
-    def next_expected(cls, explicit):
-        if explicit:
+    def next_expected(self):
+        if self.explicit:
             return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
         return [Number, Identifier, EndOfExpression]
+
+    def evaluate(self, ctx: Context):
+        children = iter(self.children)
+        definition = next(self.eval_nodes(ctx, children, False))
+        inputs = self.eval_nodes(ctx, children, definition.manual_eval)
+        return definition(*inputs)
+
+    def __repr__(self):
+        pass
+
+    def __str__(self):
+        func_name = str(self.children[0])
+
+        def arg_str(child):
+            # Add parentheses to the argument if it is a list
+            if isinstance(child, ListNode):
+                return '(' + str(child) + ')'
+            return str(child)
+
+        args = ', '.join(map(arg_str, self.children[1:]))
+        return '{}({})'.format(func_name, args)
+
+    def latex(self, ctx):
+        return super().latex(ctx)
+
+    def tree_tag(self):
+        return 'FunctionCall'
 
 
 class Number(Node):
@@ -588,7 +623,7 @@ class Number(Node):
         val = ctx.round_result(self.value)
         return str(val)
 
-    def _tree_tag(self):
+    def tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.value)
 
 
@@ -596,7 +631,6 @@ class Identifier(Node):
     def __init__(self, definition:Definition):
         super().__init__(definition.precedence, definition.associativity)
         self.name = definition.name
-        self.explicit = False
         # Info only used for string and latex conversions.
         self._display_name = getattr(definition, 'display_name', None)
         self.n_args = len(definition.args)
@@ -640,20 +674,11 @@ class Identifier(Node):
         node.add_child(iden)
         return iden, i + len(definition.name), iden.next_expected()
 
-    def next_expected(self):
-        raise NotImplemented
-
     def __str__(self):
-        raise NotImplemented
+        return self._display_name or self.name
 
-    def __repr__(self):
-        raise NotImplemented
-
-    def latex(self, ctx):
-        raise NotImplemented
-
-    def _tree_tag(self):
-        return '{}({})'.format(type(self).__name__, self.name, self.n_args)
+    def tree_tag(self):
+        return '{}({})'.format(type(self).__name__, self.name)
 
 
 class Function(Identifier):
@@ -661,38 +686,14 @@ class Function(Identifier):
         return [BinaryOperator, FunctionCall, EndOfExpression]
 
     def evaluate(self, ctx:Context):
-        definition:Definition = ctx.get(self.name, DefinitionType.IDENTIFIER)
-
-        if len(self.children) == 0 and len(definition.args) > 0 and not self.explicit:
-            # If the function takes arguments but was given none, and was not explicitly called, return the definition
-            # itself.
-            return definition
-
-        # Evaluate arguments & pass it to the function
-        inputs = list(self._eval_children(ctx, definition))
-        return definition(*inputs)
-
-    def __str__(self):
-        name = self._display_name or self.name
-        if len(self.children) == 0 and self.n_args > 0 and not self.explicit:
-            return name
-
-        def arg_str(child):
-            # Add parentheses to the argument if it is a list
-            if isinstance(child, ListNode):
-                return '(' + str(child) + ')'
-            return str(child)
-
-        args = ', '.join(map(arg_str, self.children))
-        return '{}({})'.format(name, args)
+        return ctx.get(self.name, DefinitionType.IDENTIFIER)
 
     def __repr__(self):
-        return '<{} name={}, n_args={}, is_const={}, explicit={}, children={}>'.format(
+        return '<{} name={}, n_args={}, is_const={}, children={}>'.format(
             type(self).__name__,
             repr(self.name),
             self.n_args,
             self.is_const,
-            self.explicit,
             len(self.children)
         )
 
@@ -731,18 +732,12 @@ class Variable(Identifier):
         definition = ctx.get(self.name, DefinitionType.IDENTIFIER)
         return definition()
 
-    def __str__(self):
-        return self._display_name or self.name
-
     def __repr__(self):
         return '<{} name={}, children={}>'.format(
             type(self).__name__,
             repr(self.name),
             len(self.children)
         )
-
-    def _tree_tag(self):
-        return '{}({})'.format(type(self).__name__, self.name)
 
     def latex(self, ctx):
         definition = ctx.get(self.name, default=None)
@@ -962,7 +957,7 @@ class Declaration(Identifier):
             return self.definition
 
         # Evaluate arguments & pass it to the function
-        inputs = self._eval_children(ctx, self.definition)
+        inputs = self.eval_nodes(ctx, self.children, self.definition.manual_eval)
         return self.definition(*inputs)
 
     def __str__(self):
@@ -1002,7 +997,7 @@ class Declaration(Identifier):
 
         return result
 
-    def _tree_tag(self):
+    def tree_tag(self):
         return '{}({})'.format(type(self).__name__, self.definition.signature)
 
     def add_to_tree(self, tree, num):
