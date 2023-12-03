@@ -345,15 +345,13 @@ def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
     x = np.linspace(xlow, xhigh, n)
     y = np.empty(len(x))
 
-    # Test the first input for being a float or int
-    y[0] = f(x[0])
-    if not isinstance(y[0], (float, int)):
-        raise TypeError("{} is not 1-dimensional. Function must take 1 input and return 1 output".format(f.signature))
-
     # Fill out the rest of the outputs
-    for i in range(1, len(x)):
-        result = f(x[i])
-        y[i] = float(result)
+    for i in range(len(x)):
+        try:
+            result = f(x[i])
+            y[i] = float(result)
+        except Exception:
+            y[i] = np.nan
 
     fig, ax = plt.subplots(1, 1)
 
