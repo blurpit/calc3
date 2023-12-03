@@ -980,12 +980,12 @@ class Declaration(Identifier):
             for name in node._required_identifiers:
                 if (name != definition.name
                         and name not in definition.args
-                        and name not in ctx.global_scope):
+                        and (name, DefinitionType.IDENTIFIER) not in ctx.global_scope):
                     idens.add(name)
         elif isinstance(node, Identifier):
             if (node.name != definition.name
                     and node.name not in definition.args
-                    and node.name not in ctx.global_scope):
+                    and (node.name, DefinitionType.IDENTIFIER) not in ctx.global_scope):
                 # Get the definition for the identifier
                 identifier = ctx.get(node.name)
                 # Add the identifier to the set if it is a declared function
