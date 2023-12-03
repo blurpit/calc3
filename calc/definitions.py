@@ -199,18 +199,10 @@ class ArgumentWrapper(Definition):
         if self.func is None:
             return self.signature
 
-        print('Func:', type(self.func), repr(self.func))
         if self.is_constant and type(self.func) == list:
             body = ', '.join(map(str, self.func))
         else:
             body = str(self.func)
-
-        # if type(self.func).__name__ == 'ListNode':
-        #     # add parentheses if the function returns a list (Ex. "f(x)=(1,2,3), 4") because the comma operator has
-        #     # lower precedence than a declaration.
-        #     # Todo: compare precedences instead of a direct check for a ListNode type. This should, ideally, reflect
-        #     #       Declaration.find_expression_end().
-        #     body = '(' + body + ')'
 
         return '{} = {}'.format(self.signature, body)
 
