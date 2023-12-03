@@ -353,23 +353,25 @@ class DeclaredFunction(FunctionDefinition):
         if self.is_constant and hasattr(self, '_value'):
             return self._value
 
-        # Push a new scope. If this definition has a saved scope, push it.
+        # If this definition has a saved scope, push it.
         with self.ctx.with_inserted_scope(self.saved_scope):
-            # Add self to the context for recursion
-            if not self.name in self.ctx:
-                self.ctx.add(self)
+            # Push another scope for the function's arguments.
+            with self.ctx.with_scope():
+                # Add self to the context for recursion
+                if not self.name in self.ctx:
+                    self.ctx.add(self)
 
-            # Add argument values to the context
-            self.add_args_to_context(self.ctx, inputs)
+                # Add argument values to the context
+                self.add_args_to_context(self.ctx, inputs)
 
-            # Evaluate the function
-            result = self.func.evaluate(self.ctx)
+                # Evaluate the function
+                result = self.func.evaluate(self.ctx)
 
-            # Cache the value if this is a constant
-            if self.is_constant:
-                self._value = result
+                # Cache the value if this is a constant
+                if self.is_constant:
+                    self._value = result
 
-            return result
+                return result
 
     def __str__(self):
         if self.is_constant and hasattr(self, '_value'):

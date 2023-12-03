@@ -2,7 +2,7 @@ import math
 import pickle
 import sys
 from contextlib import contextmanager
-from typing import List, Tuple, Union
+from typing import Iterable, List, Tuple, Union
 
 from .definitions import DeclaredFunction, Definition, DefinitionType
 
@@ -152,6 +152,13 @@ class Context:
                 condensed[k] = v
         return condensed
 
+    def scope_from(self, names: Iterable[str]):
+        """ Returns a new Scope containing all items in this context with a name in `names`. """
+        scope = Scope()
+        for name in names:
+            scope.add(self.get(name))
+        return scope
+
     def push_scope(self):
         """ Push a new scope to the stack """
         self.stack.append(Scope())
@@ -174,9 +181,11 @@ class Context:
 
     @contextmanager
     def with_inserted_scope(self, scope=None, stack_index=-1):
-        """ Push a specific given scope *after* a particular index in the stack """
+        """ Push a specific given scope *after* a particular index in the stack. If a scope is not provided,
+            no scope will be pushed. """
         if scope is None:
-            scope = Scope()
+            yield
+            return
         if stack_index < 0:
             stack_index += len(self.stack)
         stack_index += 1

@@ -511,7 +511,7 @@ class FunctionCall(Node):
         elif expr[i] == '(':
             call = cls(True)
             func.insert_parent(call)
-            args, i, _ = Parenthesis.parse(ctx, call, i, expr, start, end)
+            _, i, _ = Parenthesis.parse(ctx, call, i, expr, start, end)
             return call, i, call.next_expected()
 
         # Implicit call.
@@ -804,11 +804,12 @@ class Declaration(Identifier):
     """ A declaration of a new identifier. Takes the form of foo(a,b,c)=... """
     precedence = 1
 
-    def __init__(self, definition: DeclaredFunction, root):
+    def __init__(self, definition: DeclaredFunction, root, required_identifiers=None):
         super().__init__(definition)
         self.definition: DeclaredFunction = definition
         self.root = root
         self.n_args = len(definition.args)
+        self._required_identifiers = required_identifiers or set()
 
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
@@ -847,8 +848,13 @@ class Declaration(Identifier):
 
             definition.func = root
 
+            # Find required identifiers
+            # This is the set of identifiers required to evaluate the declaration's body.
+            required_identifiers = set()
+            Declaration._find_required_identifiers(ctx, definition, root, required_identifiers)
+
         # Finally, add the new identifier to the tree
-        decl = cls(definition, root)
+        decl = cls(definition, root, required_identifiers)
         node.add_child(decl)
         return decl, end, decl.next_expected()
 
@@ -951,10 +957,43 @@ class Declaration(Identifier):
 
     def evaluate(self, ctx:Context):
         # Save the scope into the definition (unless it is a constant, which doesn't need scope)
-        if not self.definition.is_constant:
-            self.definition.save_scope(ctx.condense())
+        if not self.definition.is_constant and len(self._required_identifiers) > 0:
+            scope = ctx.scope_from(self._required_identifiers)
+            self.definition.save_scope(scope)
 
         return self.definition
+
+    @staticmethod
+    def _find_required_identifiers(ctx: Context, definition: DeclaredFunction, node: Node, idens: set):
+        """
+        Traverses the parse tree rooted at `node` and adds all "required" identifiers to the given `idens`
+        set. An identifier is required if it needs to be saved into the declaration's scope when evaluated.
+        A node is a required identifier if:
+            - The node is an Identifier node
+            - The name of the identifier is not in this Declaration's own arguments
+            - The identifier is not the same as this Declaration (recursion)
+            - The identifier is not from the global scope
+        """
+        if isinstance(node, Declaration):
+            # Any identifiers required by a child declaration is also required by its parent.
+            # The child's set of required identifiers should already be computed since it was parsed first.
+            for name in node._required_identifiers:
+                if (name != definition.name
+                        and name not in definition.args
+                        and name not in ctx.global_scope):
+                    idens.add(name)
+        elif isinstance(node, Identifier):
+            if (node.name != definition.name
+                    and node.name not in definition.args
+                    and node.name not in ctx.global_scope):
+                # Get the definition for the identifier
+                identifier = ctx.get(node.name)
+                # Add the identifier to the set if it is a declared function
+                idens.add(identifier.name)
+        else:
+            # Recursively keep traversing the tree
+            for child in node.children:
+                Declaration._find_required_identifiers(ctx, definition, child, idens)
 
     def __str__(self):
         if len(self.children) == 0:
