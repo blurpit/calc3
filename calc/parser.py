@@ -450,9 +450,9 @@ class Parenthesis(Token):
 
     @classmethod
     def next_expected(cls, root: Node):
-        if isinstance(root, (Function, Declaration)):
-            # If the parentheses contained a function then tokens after the parentheses should be treated as a function
-            # call (Ex. "(sin)(3)" or "(f(x)=2x)(4)")
+        if isinstance(root, Declaration):
+            # If the parentheses contained a declaration, then tokens after the parentheses should be treated as a
+            # function call. Ex. "(f(x)=2x)(4)"
             return [BinaryOperator, FunctionCall, EndOfExpression]
         return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
 
@@ -489,34 +489,34 @@ class Parenthesis(Token):
 
 
 class FunctionCall(Node):
-    def __init__(self, explicit):
-        super().__init__()
+    def __init__(self, func, explicit):
+        super().__init__(func.precedence, func.associativity)
         self.explicit = explicit
 
     @classmethod
     def parse(cls, ctx, func: Union['Function', 'Declaration'], i, expr, start, end):
         # Explicit empty call. Remove the () and continue.
         if expr[i:i+2] == '()':
-            call = cls(True)
+            call = cls(func, True)
             func.insert_parent(call)
             return call, i+2, call.next_expected()
 
         # Implicit call to a 0-arg function. Treat the same as an explicit empty call.
         elif func.n_args == 0:
-            call = cls(True)
+            call = cls(func, True)
             func.insert_parent(call)
             return call, i, call.next_expected()
 
         # Explicit non-empty call. Parse the inside of the parentheses.
         elif expr[i] == '(':
-            call = cls(True)
+            call = cls(func, True)
             func.insert_parent(call)
             _, i, _ = Parenthesis.parse(ctx, call, i, expr, start, end)
             return call, i, call.next_expected()
 
         # Implicit call.
         else:
-            call = cls(False)
+            call = cls(func, False)
             func.insert_parent(call)
             return call, i, call.next_expected()
 
