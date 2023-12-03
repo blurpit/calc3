@@ -337,9 +337,13 @@ class DeclaredFunction(FunctionDefinition):
     def __init__(self, name, args, is_const):
         super().__init__(name, args, None)
         self.is_constant = is_const and len(args) == 0
+        self.saved_scope = None
 
     def bind_context(self, ctx):
         self.ctx = ctx
+
+    def save_scope(self, scope):
+        self.saved_scope = scope
 
     def __call__(self, *inputs):
         """ Evaluate the function. A context must be binded to use this. """
@@ -349,12 +353,22 @@ class DeclaredFunction(FunctionDefinition):
         if self.is_constant and hasattr(self, '_value'):
             return self._value
 
-        with self.ctx.with_scope():
+        # Push a new scope. If this definition has a saved scope, push it.
+        with self.ctx.with_inserted_scope(self.saved_scope):
+            # Add self to the context for recursion
             if not self.name in self.ctx:
                 self.ctx.add(self)
+
+            # Add argument values to the context
             self.add_args_to_context(self.ctx, inputs)
+
+            # Evaluate the function
             result = self.func.evaluate(self.ctx)
-            self._value = result
+
+            # Cache the value if this is a constant
+            if self.is_constant:
+                self._value = result
+
             return result
 
     def __str__(self):

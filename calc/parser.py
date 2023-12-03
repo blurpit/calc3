@@ -1,6 +1,8 @@
+from typing import Union
+
 from .context import Context
-from .definitions import is_identifier, Associativity, DefinitionType, Definition, BinaryOperatorDefinition, \
-    UnaryOperatorDefinition, VariableDefinition, DeclaredFunction, ArgumentError, spread, replace_latex_symbols
+from .definitions import ArgumentError, Associativity, BinaryOperatorDefinition, DeclaredFunction, Definition, \
+    DefinitionType, UnaryOperatorDefinition, VariableDefinition, is_identifier, replace_latex_symbols, spread
 
 
 def parse(ctx:Context, expr:str, start:int=0, end:int=None, allow_empty=False):
@@ -447,7 +449,7 @@ class Parenthesis(Token):
 
     @classmethod
     def next_expected(cls, root):
-        if isinstance(root, (Identifier, Declaration)) and not root.is_const and not root.explicit:
+        if isinstance(root, (Function, Declaration)) and not root.explicit:
             # If the parentheses contained a function then tokens after the parentheses should be treated as a function
             # call (Ex. "(sin)(3)" or "(f(x)=2x)(4)")
             return [BinaryOperator, FunctionCall, EndOfExpression]
@@ -594,10 +596,11 @@ class Identifier(Node):
     def __init__(self, definition:Definition):
         super().__init__(definition.precedence, definition.associativity)
         self.name = definition.name
+        self.explicit = False
+        # Info only used for string and latex conversions.
         self._display_name = getattr(definition, 'display_name', None)
         self.n_args = len(definition.args)
         self.is_const = definition.is_constant
-        self.explicit = False
 
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
@@ -806,7 +809,7 @@ class Declaration(Identifier):
 
     def __init__(self, definition:DeclaredFunction, root):
         super().__init__(definition)
-        self.definition:DeclaredFunction = definition
+        self.definition: DeclaredFunction = definition
         self.root = root
 
     @classmethod
@@ -949,6 +952,10 @@ class Declaration(Identifier):
         return [BinaryOperator, FunctionCall, EndOfExpression]
 
     def evaluate(self, ctx:Context):
+        # Save the scope into the definition (unless it is a constant, which doesn't need scope)
+        if not self.definition.is_constant:
+            self.definition.save_scope(ctx.condense())
+
         if len(self.children) == 0 and not self.explicit:
             # If the function takes arguments but was given none, and was not explicitly called, return the definition
             # itself.

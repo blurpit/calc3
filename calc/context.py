@@ -34,6 +34,37 @@ class Params:
     # replace an item in its parent scope(s) until its scope is popped.
     allow_global_scope_shadowing = False
 
+    # If True, the scope
+    save_declared_function_scopes = True
+
+
+class Scope(dict):
+    def add(self, definition: Definition):
+        """ Add a definition to the scope. Replaces the existing definition if there is one. """
+        self[(definition.name, definition.token_type)] = definition
+
+    def get(self, name: str, token_type: DefinitionType = DefinitionType.IDENTIFIER, default=None):
+        """ Get a definition from the scope. """
+        return super().get((name, token_type), default)
+
+    def __contains__(self, item: Union[Definition, Tuple[str, DefinitionType]]):
+        if isinstance(item, Definition):
+            return super().__contains__((item.name, item.token_type))
+        elif isinstance(item, tuple):
+            return super().__contains__(item)
+        else:
+            return False
+
+    def __str__(self):
+        s = 'Scope {\n'
+        for definition in self.values():
+            s += '\t' + str(definition) + '\n'
+        s += '}'
+        return s
+
+    def __repr__(self):
+        return '<Scope size={}>'.format(len(self))
+
 
 class Context:
     def __init__(self):
@@ -113,6 +144,14 @@ class Context:
             # name is not in the context
             raise ContextError("'{}' is undefined.".format(name))
 
+    def condense(self):
+        """ Returns a Scope containing all non-global items in this context (removes shadowed items). """
+        condensed = Scope()
+        for scope in self.stack[1:]:
+            for k, v in scope.items():
+                condensed[k] = v
+        return condensed
+
     def push_scope(self):
         """ Push a new scope to the stack """
         self.stack.append(Scope())
@@ -132,6 +171,21 @@ class Context:
             yield
         finally:
             self.pop_scope()
+
+    @contextmanager
+    def with_inserted_scope(self, scope=None, stack_index=-1):
+        """ Push a specific given scope *after* a particular index in the stack """
+        if scope is None:
+            scope = Scope()
+        if stack_index < 0:
+            stack_index += len(self.stack)
+        stack_index += 1
+
+        try:
+            self.stack.insert(stack_index, scope)
+            yield
+        finally:
+            self.stack.pop(stack_index)
 
     def save(self, filename):
         """ Save DeclaredFunctions in the context to a file """
@@ -199,6 +253,7 @@ class Context:
 
     def __str__(self):
         s = 'Context {\n'
+        s += '\t<global scope: {} items>\n'.format(len(self.global_scope))
         for i, scope in enumerate(self.stack[1:], 1):
             for definition in scope.values():
                 s += '\t' * i + str(definition) + '\n'
@@ -207,31 +262,3 @@ class Context:
 
     def __repr__(self):
         return '<Context size={}>'.format(len(self.stack))
-
-
-class Scope(dict):
-    def add(self, definition: Definition):
-        """ Add a definition to the scope. Replaces the existing definition if there is one. """
-        self[(definition.name, definition.token_type)] = definition
-
-    def get(self, name: str, token_type: DefinitionType = DefinitionType.IDENTIFIER, default=None):
-        """ Get a definition from the scope. """
-        return super().get((name, token_type), default)
-
-    def __contains__(self, item: Union[Definition, Tuple[str, DefinitionType]]):
-        if isinstance(item, Definition):
-            return super().__contains__((item.name, item.token_type))
-        elif isinstance(item, tuple):
-            return super().__contains__(item)
-        else:
-            return False
-
-    def __str__(self):
-        s = 'Scope {\n'
-        for definition in self.values():
-            s += '\t' + str(definition) + '\n'
-        s += '}'
-        return s
-
-    def __repr__(self):
-        return '<Scope size={}>'.format(len(self))
