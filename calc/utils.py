@@ -185,9 +185,9 @@ def console(ctx:Context, *, show_time=False, show_tree=False):
                 try:
                     if show_tree:
                         tree(ctx, exp)
-                    t = time.time()
+                    t = time.perf_counter()
                     result = evaluate(ctx, exp)
-                    t = time.time() - t
+                    t = time.perf_counter() - t
 
                     if isinstance(result, DeclaredFunction):
                         ctx.add(result)
