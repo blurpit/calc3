@@ -535,7 +535,12 @@ class FunctionCall(Node):
         pass
 
     def __str__(self):
-        func_name = str(self.children[0])
+        func = self.children[0]
+        func_name = str(func)
+        # Add parentheses to the function if it is a declaration
+        # eg. (f(x)=2x)(6)
+        if isinstance(func, Declaration):
+            func_name = '(' + func_name + ')'
 
         def arg_str(child):
             # Add parentheses to the argument if it is a list
