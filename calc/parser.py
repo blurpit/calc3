@@ -636,10 +636,8 @@ class Identifier(Node):
     def __init__(self, definition:Definition):
         super().__init__(definition.precedence, definition.associativity)
         self.name = definition.name
-        # Info only used for string and latex conversions.
         self._display_name = getattr(definition, 'display_name', None)
         self.n_args = len(definition.args)
-        self.is_const = definition.is_constant
 
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
@@ -694,11 +692,10 @@ class Function(Identifier):
         return ctx.get(self.name, DefinitionType.IDENTIFIER)
 
     def __repr__(self):
-        return '<{} name={}, n_args={}, is_const={}, children={}>'.format(
+        return '<{} name={}, n_args={}, children={}>'.format(
             type(self).__name__,
             repr(self.name),
             self.n_args,
-            self.is_const,
             len(self.children)
         )
 
@@ -807,10 +804,11 @@ class Declaration(Identifier):
     """ A declaration of a new identifier. Takes the form of foo(a,b,c)=... """
     precedence = 1
 
-    def __init__(self, definition:DeclaredFunction, root):
+    def __init__(self, definition: DeclaredFunction, root):
         super().__init__(definition)
         self.definition: DeclaredFunction = definition
         self.root = root
+        self.n_args = len(definition.args)
 
     @classmethod
     def parse(cls, ctx, node, i, expr, start, end):
