@@ -354,7 +354,8 @@ class DeclaredFunction(FunctionDefinition):
             return self._value
 
         # If this definition has a saved scope, push it.
-        with self.ctx.with_inserted_scope(self.saved_scope):
+        stack_index = -1 if self.ctx.params.saved_scope_shadowing else 0
+        with self.ctx.with_inserted_scope(self.saved_scope, stack_index):
             # Push another scope for the function's arguments.
             with self.ctx.with_scope():
                 # Add self to the context for recursion

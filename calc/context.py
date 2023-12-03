@@ -16,10 +16,14 @@ class Params:
     """
     Number of decimal places to round numbers to after evaluating. Applies
     to floats, vectors, & matrices.
+    
      - None (default behavior) means no rounding, leave results as is. This
        may result in floating point precision errors.
+    
      - Floats with no decimal component will still be converted to ints even
        if rounding is disabled.
+    
+    Default: None
     """
 
     parse_unknown_identifiers = False
@@ -27,10 +31,13 @@ class Params:
     If False, identifiers that don't exist in the context at parse time
     will raise an ExpressionSyntaxError (default behavior). If True, unknown
     identifiers will be added to the syntax tree as Variables.
+    
      - Note that the parser will not try to guess how best to split unknown
        identifiers and will simply read left to right; for example if 'x' is
        defined, 'xy' will be parsed as 'x*y' but 'yx' will be parsed as a
        single variable 'yx'.
+       
+    Default: False
     """
 
     allow_global_scope_shadowing = False
@@ -38,9 +45,11 @@ class Params:
     If False, any items added to the context with the same name (and definition
     type) as an item in the global scope will raise a ContextError. Shadowed 
     items replace an item in its parent scope(s) until its scope is popped.
+    
+    Default: False
     """
 
-    save_declared_function_outer_scope = True
+    save_function_outer_scope = True
     """
     If True, declared functions will store the identifiers they use from their 
     outer scope. For example::
@@ -49,9 +58,30 @@ class Params:
         g(x) = xp
         del(p)
         
-    ``g(x)`` will save ``p`` into its scope, so ``g(3)`` will result in 15 even 
-    after ``p`` is deleted. This is useful if a function returns another function;
-    the returned function will remember the arguments of the outer function.
+    ``g(x)`` will save ``p`` into its outer scope, so ``g(3)`` will result in 
+    15 even after ``p`` is deleted. This is useful if a function returns another 
+    function; the returned function will remember the arguments of the outer 
+    function.
+    
+    Default: True
+    """
+
+    saved_scope_shadowing = False
+    """
+    Determines whether the saved identifiers in a declared function will shadow 
+    existing identifiers in the context. For example::
+    
+        p = 5
+        g(x) = xp
+        p = -1
+    
+    ``g(3)`` will return 15 if this param is True, because the saved value of 
+    ``p`` is 5, and it will shadow ``p`` from the outer scope. If False, ``g(3)`` 
+    will return -3.
+    
+    This param has no effect if ``save_function_outer_scope`` is False.
+    
+    Default: False
     """
 
 
