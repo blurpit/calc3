@@ -951,14 +951,7 @@ class Declaration(Identifier):
         if not self.definition.is_constant:
             self.definition.save_scope(ctx.condense())
 
-        if len(self.children) == 0 and not self.explicit:
-            # If the function takes arguments but was given none, and was not explicitly called, return the definition
-            # itself.
-            return self.definition
-
-        # Evaluate arguments & pass it to the function
-        inputs = self.eval_nodes(ctx, self.children, self.definition.manual_eval)
-        return self.definition(*inputs)
+        return self.definition
 
     def __str__(self):
         if len(self.children) == 0:
