@@ -392,6 +392,20 @@ def latex_(ctx, root, do_eval=None):
     root.parent = parent
     return result
 
+def scope_(f):
+    if not isinstance(f, DeclaredFunction):
+        raise TypeError('`f` must be a custom defined function')
+
+    s = 'Outer scope of {} {{\n'.format(f.signature)
+    if f.saved_scope is not None:
+        for definition in f.saved_scope.values():
+            if not isinstance(definition, DeclaredFunction) and definition.is_constant:
+                s += '\t{} = {}\n'.format(definition, definition())
+            else:
+                s += '\t{}\n'.format(definition)
+    s += '}'
+    return s
+
 def del_(ctx, obj):
     if not isinstance(obj, Identifier):
         raise TypeError('`obj` must be an identifier')
@@ -842,6 +856,7 @@ def create_default_context():
         FunctionDefinition('graph', ['f()', 'xlow?', 'xhigh?', 'ylow?', 'yhigh?', 'n?'], graph_, help_text="Graphs a function `f(x)`. `x/y low/high` define the x and y axis scale, and `n` is how many points to evaluate."),
         FunctionDefinition('latex', ['expr', 'eval?'], latex_, help_text="Converts an expression into LaTeX code. Pass 1 to `eval` to evaluate before converting to LaTeX.", manual_eval=True, precedence=0),
         FunctionDefinition('del',   ['obj'],           del_,   help_text="Delete an identifier", manual_eval=True),
+        FunctionDefinition('scope', ['f()'],           scope_, help_text="Displays a list of identifiers saved into the scope of a declared function `f`"),
 
         # Logic & Data Structure Functions
         FunctionDefinition('sum',    ['*x'],                        sum_,                  help_text="Sum of `x`"),
