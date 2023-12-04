@@ -675,6 +675,17 @@ class matrix(list):
         raise TypeError("unsupported operand type(s) for *: '{}' and '{}'"
                         .format(type(other).__name__, type(self).__name__))
 
+    def __add__(self, other):
+        if isinstance(other, matrix):
+            if self.shape == other.shape:
+                return matrix(*(
+                    a + b
+                    for a, b in zip(self, other)
+                ))
+            raise LinAlgError('incompatible shapes for matrix addition')
+        raise TypeError("unsupported operand type(s) for +: '{}' and '{}'"
+                        .format(type(self).__name__, type(other).__name__))
+
     def __pow__(self, power, modulo=None):
         if isinstance(power, int):
             if self.shape[0] == self.shape[1]:
