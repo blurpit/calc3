@@ -201,7 +201,7 @@ def console(ctx:Context, *, show_time=False, show_tree=False, echo=False):
 
                     # Evaluate expression
                     t = time.perf_counter()
-                    result = evaluate(ctx, exp)
+                    result = evaluate(ctx, root)
                     t = time.perf_counter() - t
 
                     # Add result to context or show graph figure
