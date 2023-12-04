@@ -602,7 +602,7 @@ class vector(list):
         for i, x in enumerate(self):
             if hasattr(x, '__round__'):
                 x = round(x, n)
-                if x % 1 == 0:
+                if isinstance(x, float) and x % 1 == 0:
                     x = int(x)
                 v[i] = x
         return v
