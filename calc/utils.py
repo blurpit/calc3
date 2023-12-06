@@ -645,40 +645,40 @@ def _spherical_to_cylindrical(r, theta, phi):
 def _tex_div(ctx, node, left, right, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
-    return r'\frac{{{}}}{{{}}}'.format(left, right)
+    return rf'\frac{{{left}}}{{{right}}}'
 
 def _tex_mul(ctx, node, left, right, parens_left, parens_right, is_implicit):
     left = left.latex(ctx)
     right = right.latex(ctx)
 
     if parens_left:
-        left = r'\left( ' + left + r' \right)'
+        left = rf'\left( {left} \right)'
     if parens_right:
-        right = r'\left( ' + right + r' \right)'
+        right = rf'\left( {right} \right)'
 
     if is_implicit:
-        return left + ' ' + right
+        return f'{left} {right}'
     else:
-        return r'{} \cdot {}'.format(left, right)
+        return rf'{left} \cdot {right}'
 
 def _tex_pow(ctx, node, left, right, parens_left, *_):
     left = left.latex(ctx)
     right = right.latex(ctx)
     if parens_left:
-        left = r'\left( ' + left + r' \right)'
-    return r'{}^{{{}}}'.format(left, right)
+        left = rf'\left( {left} \right)'
+    return rf'{left}^{{{right}}}'
 
 def _tex_abs(ctx, node, x):
     x = x.latex(ctx)
-    return r'\left| ' + x + r' \right|'
+    return rf'\left| {x} \right|'
 
 def _tex_floor(ctx, node, x):
     x = x.latex(ctx)
-    return r'\lfloor{' + x + r'}\rfloor'
+    return rf'\lfloor{{{x}}}\rfloor'
 
 def _tex_ceil(ctx, node, x):
     x = x.latex(ctx)
-    return r'\lceil{' + x + r'}\rceil'
+    return rf'\lceil{{{x}}}\rceil'
 
 def _tex_if(ctx, node, condition, if_true, if_false):
     if isinstance(condition, UnaryOperator) and condition.symbol == '!':
@@ -689,35 +689,30 @@ def _tex_if(ctx, node, condition, if_true, if_false):
     else:
         comparator = r'\neq'
 
-    return r'\begin{{cases}} ' \
-           r'{} & \text{{if }} {} {} 0 \\' \
-           r'{} & \text{{otherwise}} ' \
-           r'\end{{cases}}'.format(
-        if_true.latex(ctx),
-        condition.latex(ctx),
-        comparator,
-        if_false.latex(ctx)
-    )
+    return rf'\begin{{cases}} ' \
+           rf'{if_true.latex(ctx)} & \text{{if }} {condition.latex(ctx)} {comparator} 0 \\' \
+           rf'{if_false.latex(ctx)} & \text{{otherwise}} ' \
+           rf'\end{{cases}}'
 
 def _tex_root(ctx, node, x, n=None):
     x = x.latex(ctx)
     if n is None:
-        return r'\sqrt{' + x + r'}'
+        return rf'\sqrt{{{x}}}'
     n = n.latex(ctx)
-    return r'\sqrt[{}]{{{}}}'.format(n, x)
+    return rf'\sqrt[{n}]{{{x}}}'
 
 def _tex_log(ctx, node, x, b=None):
     if b is None: b = 10
     else: b = b.latex(ctx)
-    return r'log_{{{}}}\left( {} \right)'.format(b, x)
+    return rf'log_{{{b}}}\left( {x} \right)'
 
 def _tex_fact(ctx, node, n):
     if node.is_left_parenthesized(n):
-        return r'\left({{{}}}\right)!'.format(n.latex(ctx))
-    return r'{{{}}}!'.format(n.latex(ctx))
+        return rf'\left({{{n.latex(ctx)}}}\right)!'
+    return rf'{{{n.latex(ctx)}}}!'
 
 def _tex_choose(ctx, node, n, k):
-    return '{{{}}}\choose{{{}}}'.format(n.latex(ctx), k.latex(ctx))
+    return rf'{{{n.latex(ctx)}}}\choose{{{k.latex(ctx)}}}'
 
 def _tex_integral(ctx, node, f, a, b):
     with ctx.with_scope():
@@ -743,10 +738,10 @@ def _tex_integral(ctx, node, f, a, b):
             body.add_child(Variable(ctx.get(differential)))
             body = body.latex(ctx)
 
-        return r'\int_{{{}}}^{{{}}} {{{}}} \, d{}'.format(
-            a.latex(ctx), b.latex(ctx),
-            body, replace_latex_symbols(differential)
-        )
+        a = a.latex(ctx)
+        b = b.latex(ctx)
+        differential = replace_latex_symbols(differential)
+        return rf'\int_{{{a}}}^{{{b}}} {{{body}}} \, d{differential}'
 
 def _tex_deriv(ctx, node, f, x, n=None):
     with ctx.with_scope():
@@ -775,19 +770,16 @@ def _tex_deriv(ctx, node, f, x, n=None):
 
         differential = replace_latex_symbols(differential)
         if parens_right:
-            body = r'\left( ' + body + r' \right)'
+            body = rf'\left( {body} \right)'
 
+        x = x.latex(ctx)
         if n is None:
-            frac = r'\frac{{d}}{{d{}}} \Bigr|_{{{} = {}}}'.format(
-                differential, differential, x.latex(ctx)
-            )
+            frac = rf'\frac{{d}}{{d{differential}}} \Bigr|_{{{differential} = {x}}}'
         else:
             n = n.latex(ctx)
-            frac = r'\frac{{d^{{{}}}}}{{d{}^{{{}}}}} \Bigr|_{{{} = {}}}'.format(
-                n, differential, n, differential, x.latex(ctx)
-            )
+            frac = rf'\frac{{d^{{{n}}}}}{{d{differential}^{{{n}}}}} \Bigr|_{{{differential} = {x}}}'
 
-        return r'{} {{{}}}'.format(frac, body)
+        return rf'{frac} {{{body}}}'
 
 def _tex_vec(ctx, node, *args):
     return vector(*args).latex(ctx)
@@ -809,16 +801,16 @@ def _tex_mat(ctx, node, *args):
     return matrix(*columns).latex(ctx)
 
 def _tex_dot(ctx, node, v, w):
-    return r'{} \cdot {}'.format(v.latex(ctx), w.latex(ctx))
+    return rf'{v.latex(ctx)} \cdot {w.latex(ctx)}'
 
 def _tex_mag(ctx, node, v):
-    return r'\left\| {} \right\|'.format(v.latex(ctx))
+    return rf'\left\| {v.latex(ctx)} \right\|'
 
 def _tex_mag2(ctx, node, v):
-    return r'{{\left\| {} \right\|}}^{{2}}'.format(v.latex(ctx))
+    return rf'{{\left\| {v.latex(ctx)} \right\|}}^{{2}}'
 
 def _tex_transp(ctx, node, m):
-    return r'{{{}}}^{{T}}'.format(m.latex(ctx))
+    return rf'{{{m.latex(ctx)}}}^{{T}}'
 
 
 # --- Context --- #
