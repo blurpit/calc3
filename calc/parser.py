@@ -556,7 +556,25 @@ class FunctionCall(Node):
         return '{}({})'.format(func_name, args)
 
     def latex(self, ctx):
-        return super().latex(ctx)
+        func = self.children[0]
+        inputs = self.children[1:]
+        definition = ctx.get(func.name)
+
+        name = func.latex(ctx)
+        definition.check_inputs(len(inputs))
+
+        # Add parentheses if a declaration is being called
+        # eg. (f(x)=3x)(6)
+        if isinstance(func, Declaration):
+            name = r'\left( {} \right)'.format(name)
+
+        if definition.latex_func:
+            return definition.latex_func(ctx, self, *inputs)
+
+        return r'{}\left( {} \right)'.format(
+            name,
+            ', '.join(node.latex(ctx) for node in inputs)
+        )
 
     def tree_tag(self):
         return type(self).__name__
@@ -707,30 +725,18 @@ class Function(Identifier):
         )
 
     def latex(self, ctx):
+        if isinstance(self.parent, FunctionCall):
+            # Function call, return the function name
+            return replace_latex_symbols(self._display_name or self.name)
+
+        # Function reference without call
         definition = ctx.get(self.name)
-        n_inputs = len(self.children)
-        name = replace_latex_symbols(self._display_name or self.name)
-
-        if n_inputs == 0:
-            if isinstance(self.parent, Function):
-                # Function is being passed as an argument to another function. Use only the name.
-                return name
-            elif isinstance(definition, DeclaredFunction):
-                # Use the full declaration.
-                return Declaration(definition, definition.func).latex(ctx)
-            else:
-                # Use the function signature
-                return replace_latex_symbols(definition.signature)
-
-        definition.check_inputs(n_inputs)
-
-        if definition.latex_func:
-            return definition.latex_func(ctx, self, *self.children)
-
-        return r'{}\left( {} \right)'.format(
-            name,
-            ', '.join(node.latex(ctx) for node in self.children)
-        )
+        if isinstance(definition, DeclaredFunction):
+            # Declared function, use the full declaration
+            return Declaration(definition, definition.func).latex(ctx)
+        else:
+            # Regular function, use the signature
+            return replace_latex_symbols(definition.signature)
 
 
 class Variable(Identifier):
@@ -750,19 +756,16 @@ class Variable(Identifier):
 
     def latex(self, ctx):
         definition = ctx.get(self.name, default=None)
+        if isinstance(definition, DeclaredFunction):
+            # Declared function, use the full declaration
+            return Declaration(definition, definition.func).latex(ctx)
 
-        name = replace_latex_symbols(
+        # Return the variable name alone
+        return replace_latex_symbols(
             getattr(definition, 'latex_name', None)
             or self._display_name
             or self.name
         )
-
-        if definition and self.parent is None:
-            if hasattr(definition.func, 'latex'):
-                # Direct variable reference passed, use full declaration
-                return '{} = {}'.format(name, definition.func.latex(ctx))
-
-        return name
 
 
 class ImplicitMultiplication(Token):
@@ -1031,13 +1034,6 @@ class Declaration(Identifier):
                 body = r'\left( ' + body + r' \right)'
 
             result = '{} = {}'.format(signature, body)
-
-            if len(self.children) > 0:
-                # Lambda call, Ex. "(f(x)=3x)(6)"
-                result = r'\left( {} \right)\left( {} \right)'.format(
-                    result,
-                    ',\, '.join(node.latex(ctx) for node in self.children)
-                )
 
         return result
 

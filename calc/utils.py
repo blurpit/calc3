@@ -20,8 +20,8 @@ except ImportError:
 from .context import Context
 from .definitions import Associativity, DefinitionType, Definition, FunctionDefinition, VariableDefinition, \
     BinaryOperatorDefinition, UnaryOperatorDefinition, DeclaredFunction, vector, matrix, spread, replace_latex_symbols
-from .parser import parse, Node, ListNode, Identifier, Declaration, BinaryOperator, UnaryOperator, Function, Variable, \
-    Number
+from .parser import parse, Node, ListNode, FunctionCall, Identifier, Declaration, BinaryOperator, UnaryOperator, \
+    Function, Variable, Number
 
 __all__ = [
     'evaluate',
@@ -242,16 +242,18 @@ def latex(ctx:Context, expression:Union[Definition, str]):
     """ Convert an expression into a LaTeX expression """
     if isinstance(expression, str):
         expression = re.sub(r'\s+', '', expression)
-        expression = parse(ctx, expression)
+        root = parse(ctx, expression)
+    else:
+        root = expression
 
-    if isinstance(expression, DeclaredFunction):
-        expression = Declaration(expression, expression.func)
-    elif isinstance(expression, FunctionDefinition):
-        expression = Function(expression)
-    elif isinstance(expression, VariableDefinition):
-        expression = Variable(expression)
+    if isinstance(root, DeclaredFunction):
+        root = Declaration(root, root.func)
+    elif isinstance(root, FunctionDefinition):
+        root = Function(root)
+    elif isinstance(root, VariableDefinition):
+        root = Variable(root)
 
-    return latex_(ctx, expression)
+    return latex_(ctx, root)
 
 
 # --- Function implementations --- #
@@ -395,7 +397,6 @@ def graph_(f, xlow=-10, xhigh=10, ylow=None, yhigh=None, n=1000):
 def latex_(ctx, root, do_eval=None):
     if do_eval and evaluate(ctx, do_eval):
         result = evaluate(ctx, root)
-        result = ctx.round_result(result)
         def to_latex(obj):
             if hasattr(obj, 'latex'):
                 return obj.latex(ctx)
@@ -749,7 +750,8 @@ def tex_integral(ctx, node, f, a, b):
             body = f.root.latex(ctx)
         else:
             # build a function call
-            body = Function(definition)
+            body = FunctionCall(f, True)
+            body.add_child(Function(definition))
             body.add_child(Variable(ctx.get(differential)))
             body = body.latex(ctx)
 
