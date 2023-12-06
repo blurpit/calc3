@@ -3,7 +3,8 @@ import operator
 import re
 import textwrap
 import time
-from contextlib import contextmanager
+from contextlib import redirect_stdout
+from io import StringIO
 from random import random
 from typing import Union
 
@@ -39,19 +40,6 @@ __all__ = [
 _golden = 1.618033988749895 # golden ratio (1+√5)/2
 _sqrt5 = math.sqrt(5)
 
-@contextmanager
-def _capture_stdout():
-    """ Capture anything sent to stdout inside a with block and save it to a BytesIO """
-    import sys
-    from io import StringIO
-
-    old_stdout = sys.stdout
-    string = StringIO()
-    try:
-        sys.stdout = string
-        yield string
-    finally:
-        sys.stdout = old_stdout
 
 def replace_none_with_default(f):
     """
@@ -346,7 +334,7 @@ def help_(ctx, obj):
 
 def tree_(ctx, root):
     """ Tree function for use in a function definition. Use calc.tree() in regular code. """
-    with _capture_stdout() as output:
+    with redirect_stdout(StringIO()) as output:
         tree(ctx, root)
 
     output.seek(0)
