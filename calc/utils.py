@@ -271,6 +271,9 @@ def concat_all(*args):
         else: result.append(item)
     return result
 
+def echo_(ctx, x):
+    return x
+
 def help_(ctx, obj):
     # Help for ListNode
     if isinstance(obj, ListNode):
@@ -873,6 +876,7 @@ def create_default_context():
         FunctionDefinition('ans',   '',  lambda: ctx.ans,                  help_text="Answer to the previously evaluated expression"),
 
         # Informational Functions
+        FunctionDefinition('echo',  ['expr'],          echo_,  help_text="Echoes the inputted expression", manual_eval=True, precedence=-99),
         FunctionDefinition('type',  ['obj'],           type_,  help_text="Returns the type of `obj`"),
         FunctionDefinition('help',  ['obj'],           help_,  help_text="Provides a description for the given identifier", manual_eval=True, precedence=-99),
         FunctionDefinition('tree',  ['expr'],          tree_,  help_text="Displays the syntax tree structure of an expression", manual_eval=True, precedence=-99),
