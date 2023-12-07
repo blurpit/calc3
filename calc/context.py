@@ -186,7 +186,7 @@ class Context:
 
         if key in self.stack[0]:
             # name is in the global scope
-            raise ContextError("Cannot override '{}' from global scope".format(name))
+            raise ContextError("Cannot remove '{}' from global scope".format(name))
         else:
             # name is not in the context
             raise ContextError("'{}' is undefined.".format(name))
