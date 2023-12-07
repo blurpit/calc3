@@ -11,7 +11,7 @@ class ContextError(Exception):
     pass
 
 
-class Params:
+class Settings:
     rounding = None
     """
     Number of decimal places to round numbers to after evaluating. Applies
@@ -75,11 +75,11 @@ class Params:
         g(x) = xp
         p = -1
     
-    ``g(3)`` will return 15 if this param is True, because the saved value of 
+    ``g(3)`` will return 15 if this setting is True, because the saved value of 
     ``p`` is 5, and it will shadow ``p`` from the outer scope. If False, ``g(3)`` 
     will return -3.
     
-    This param has no effect if ``save_function_outer_scope`` is False.
+    This setting has no effect if ``save_function_outer_scope`` is False.
     
     Default: False
     """
@@ -115,7 +115,7 @@ class Scope(dict):
 
 class Context:
     def __init__(self):
-        self.params = Params()
+        self.settings = Settings()
         self.global_scope = Scope()
         self.stack: List[Scope] = [self.global_scope]
         self.ans = 0
@@ -129,7 +129,7 @@ class Context:
 
         for definition in definitions:
             # Check if the definition would shadow the global scope
-            if not self.params.allow_global_scope_shadowing and definition in self.global_scope:
+            if not self.settings.allow_global_scope_shadowing and definition in self.global_scope:
                 raise ContextError("Cannot shadow '{}' from global scope".format(definition.name))
 
             # If the definition is bound to another context, make a duplicate and bind it to this context
@@ -276,11 +276,11 @@ class Context:
                 self.add(definition)
 
     def round_result(self, result):
-        """ Rounds a result according to ``params.rounding`` """
-        if self.params.rounding is not None:
+        """ Rounds a result according to ``settings.rounding`` """
+        if self.settings.rounding is not None:
             if hasattr(result, '__round__'):
                 # Object has its own round function
-                result = round(result, self.params.rounding)
+                result = round(result, self.settings.rounding)
             elif isinstance(result, list):
                 # Round each element of the list
                 result = result.copy()

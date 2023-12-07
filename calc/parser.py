@@ -684,7 +684,7 @@ class Identifier(Node):
             # `string` is empty, in other words this token isn't an identifier.
             return node, i, None
         elif definition is None:
-            if ctx.params.parse_unknown_identifiers:
+            if ctx.settings.parse_unknown_identifiers:
                 # If unknown identifiers is enabled, parse the whole string as a single variable, which will throw a
                 # ContextError if it is still undefined at evaluation time.
                 definition = VariableDefinition(expr[i:j], None)
@@ -967,7 +967,7 @@ class Declaration(Identifier):
 
     def evaluate(self, ctx:Context):
         # Save the scope into the definition (unless it is a constant, which doesn't need scope)
-        if (ctx.params.save_function_outer_scope
+        if (ctx.settings.save_function_outer_scope
                 and not self.definition.is_constant
                 and len(self._required_identifiers) > 0):
             scope = ctx.scope_from(self._required_identifiers)
