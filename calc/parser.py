@@ -731,7 +731,7 @@ class Function(Identifier):
 
         # Function reference without call
         definition = ctx.get(self.name)
-        if isinstance(definition, DeclaredFunction):
+        if self.parent is None and isinstance(definition, DeclaredFunction):
             # Declared function, use the full declaration
             return Declaration(definition, definition.func).latex(ctx)
         else:
@@ -756,7 +756,7 @@ class Variable(Identifier):
 
     def latex(self, ctx):
         definition = ctx.get(self.name, default=None)
-        if isinstance(definition, DeclaredFunction):
+        if self.parent is None and isinstance(definition, DeclaredFunction):
             # Declared function, use the full declaration
             return Declaration(definition, definition.func).latex(ctx)
 
