@@ -40,6 +40,15 @@ class Settings:
     Default: False
     """
 
+    auto_close_parentheses = False
+    """
+    If True, open parentheses will be automatically closed at the end of the 
+    expression. For example ``2*(3+4`` will evaluate to 14 instead of throwing 
+    an error.
+    
+    Default: False
+    """
+
     allow_global_scope_shadowing = False
     """
     If False, any items added to the context with the same name (and definition

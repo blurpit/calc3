@@ -429,7 +429,7 @@ class Parenthesis(Token):
             return node, i, None
 
         # Search for matching close parenthesis
-        close = cls.find_close(expr, i, end)
+        close = cls.find_close(ctx, expr, i, end)
 
         # Parse expression inside the parentheses
         root:ListNode = parse(ctx, expr, start=i+1, end=close)
@@ -457,12 +457,13 @@ class Parenthesis(Token):
         return [BinaryOperator, ImplicitMultiplication, EndOfExpression]
 
     @classmethod
-    def find_close(cls, expr, i, end, err=True):
+    def find_close(cls, ctx, expr, i, end, err=True):
         """
         Locates close parenthesis. If not found, throw an ExpressionSyntaxError.
         All parentheses between `i` and `end` must be balanced in order to find the correct answer.
         Assumes that expr[i] is '('
 
+        :param ctx: Context
         :param expr: Expression string
         :param i: Index of the opening parenthesis
         :param end: Index to stop searching
@@ -481,7 +482,10 @@ class Parenthesis(Token):
 
         if parens > 0:
             if err:
-                raise ExpressionSyntaxError('No matching close parenthesis', expr, i)
+                if ctx.settings.auto_close_parentheses:
+                    return end
+                else:
+                    raise ExpressionSyntaxError('No matching close parenthesis', expr, i)
             else:
                 return -1
 
@@ -831,7 +835,7 @@ class Declaration(Identifier):
             return node, i, None
 
         # Parse the signature
-        name, args, is_const = cls.parse_signature(expr, i, equals)
+        name, args, is_const = cls.parse_signature(ctx, expr, i, equals)
 
         if name is None:
             # If signature parsing fails, this isn't a valid declaration. Probably means there's a declaration later on
@@ -869,7 +873,7 @@ class Declaration(Identifier):
         return decl, end, decl.next_expected()
 
     @classmethod
-    def parse_signature(cls, expr, i, end):
+    def parse_signature(cls, ctx, expr, i, end):
         """
         Parses a function signature from a string and returns name, args array.
 
@@ -880,6 +884,7 @@ class Declaration(Identifier):
         not.
         If the signature is invalid, returns (None, None, None)
 
+        :param ctx: Context
         :param expr: Expression string
         :param i: Current index
         :param end: End index of the signature
@@ -895,7 +900,7 @@ class Declaration(Identifier):
             is_const = True
         else:
             # Locate closing parenthesis. Should be before the equals sign.
-            rparens = Parenthesis.find_close(expr, parens, end, err=False)
+            rparens = Parenthesis.find_close(ctx, expr, parens, end, err=False)
             is_const = False
 
         if rparens == -1 or rparens != end - 1:
@@ -953,7 +958,7 @@ class Declaration(Identifier):
             ch = expr[i]
             if ch == '(':
                 # Skip everything inside parentheses
-                i = Parenthesis.find_close(expr, i, end)
+                i = Parenthesis.find_close(ctx, expr, i, end)
             elif (ch, DefinitionType.BINARY_OPERATOR) in ctx:
                 # Binary operator, check the precedence
                 binop = ctx.get(ch, DefinitionType.BINARY_OPERATOR)
