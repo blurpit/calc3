@@ -296,6 +296,10 @@ class FunctionDefinition(Definition):
                 raise ArgumentError(i, 'Empty argument name')
             if not args[i].isidentifier():
                 raise ArgumentError(i, "Invalid argument name: '{}'".format(args[i]))
+            # Check duplicate argument name
+            for j in range(i):
+                if args[i] == args[j]:
+                    raise ArgumentError(i, "Duplicate argument name: '{}'".format(args[i]))
 
         # Check func
         # If func is None we'll assume it's supposed to be replaced later. If it doesn't get replaced, that's more
