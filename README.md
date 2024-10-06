@@ -21,6 +21,66 @@ Required dependencies: numpy, scipy, colorama, treelib. Optional dependencies:
 matplotlib.
 
 
+# Table of Contents
+- [Usage](#usage)
+- [Expression evaluation](#expression-evaluation)
+  * [Simple expressions](#simple-expressions)
+  * [Using functions](#using-functions)
+    + [Implicit calls](#implicit-calls)
+    + [Zero-argument calls](#zero-argument-calls)
+  * [Creating functions](#creating-functions)
+  * [Creating variables](#creating-variables)
+  * [Function references](#function-references)
+    + [Functions as arguments](#functions-as-arguments)
+  * [Recursion](#recursion)
+  * [Advanced function creation](#advanced-function-creation)
+    + [Function arguments](#function-arguments)
+    + [Optional arguments](#optional-arguments)
+    + [Star arguments](#star-arguments)
+    + [Combining argument types](#combining-argument-types)
+  * [Lists](#lists)
+    + [Spread operator](#spread-operator)
+  * [Vectors & matrices](#vectors--matrices)
+- [Graphing](#graphing)
+- [LaTeX](#latex)
+- [Scopes & contexts](#scopes--contexts)
+    + [Definitions](#definitions)
+    + [Shadowing](#shadowing)
+    + [Global scope](#global-scope)
+      - [Global scope modification](#global-scope-modification)
+      - [Global scope shadowing](#global-scope-shadowing)
+    + [Settings](#settings)
+    + [The default context](#the-default-context)
+      - [Constants](#constants)
+      - [Binary operators](#binary-operators)
+      - [Unary operators](#unary-operators)
+      - [Basic functions](#basic-functions)
+      - [Informational functions](#informational-functions)
+      - [Logic & data structure functions](#logic--data-structure-functions)
+      - [Roots & complex functions](#roots--complex-functions)
+      - [Trigonometric functions](#trigonometric-functions)
+      - [Hyperbolic functions](#hyperbolic-functions)
+      - [Exponential & logarithmic functions](#exponential--logarithmic-functions)
+      - [Combinatorial & statistics functions](#combinatorial--statistics-functions)
+      - [Calculus](#calculus)
+      - [Vectors & matrices](#vectors--matrices-1)
+      - [Linear algebra](#linear-algebra)
+      - [Coordinate system conversion functions](#coordinate-system-conversion-functions)
+- [Python definitions](#python-definitions)
+    + [Binary operators](#binary-operators-1)
+    + [Unary operators](#unary-operators-1)
+    + [Variables](#variables)
+    + [Other arguments](#other-arguments)
+- [Evaluation details](#evaluation-details)
+    + [Precedence & Associativity](#precedence--associativity)
+    + [Syntax trees](#syntax-trees)
+    + [Saved scopes](#saved-scopes)
+      - [Usage example](#usage-example)
+      - [Saved scope settings](#saved-scope-settings)
+      - [Returning functions](#returning-functions)
+- [Saving to JSON](#saving-to-json)
+
+
 # Usage
 ```python
 import calc
@@ -1242,7 +1302,7 @@ Outer scope of g(y) {
 15
 ```
 
-## Saving to JSON
+# Saving to JSON
 Contexts (minus the root context) can be saved to json files using `calc.dump_contexts()` and loaded using `calc.load_contexts()`.
 
 ```python
