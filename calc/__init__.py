@@ -1,3 +1,5 @@
 from .context import Context, ContextError
-from .utils import create_default_context, evaluate, tree, console, graph, latex
-from .definitions import Associativity, DefinitionType, FunctionDefinition, VariableDefinition, DeclaredFunction
+from .definitions import Associativity, BinaryOperatorDefinition, \
+    DeclaredFunction, DefinitionType, FunctionDefinition, \
+    UnaryOperatorDefinition, VariableDefinition
+from .utils import console, create_default_context, evaluate, graph, latex, tree
