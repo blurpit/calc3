@@ -272,6 +272,11 @@ def _help(ctx, obj):
         else:
             return 'help: {}\nList of {} elements'.format(str(obj), len(obj.children))
 
+    # This generally only happens when the input is a zero-arg
+    # function. Extract the function reference itself.
+    if isinstance(obj, FunctionCall):
+        obj = obj.children[0]
+
     # Help for identifiers
     if isinstance(obj, Identifier):
         if isinstance(obj, Declaration):
